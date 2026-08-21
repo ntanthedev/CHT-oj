@@ -31,6 +31,10 @@ test("presenter setup keeps engine details advanced and the HUD hidden by defaul
   assert.match(template, /id="resolver-advanced"[^>]*class="resolver-advanced"/);
   assert.match(template, /id="resolver-hud"[^>]*hidden/);
   assert.match(template, /id="resolver-tie-order"[^>]*type="hidden"[^>]*value="seeded"/);
+  assert.match(template, /id="resolver-policy"[^>]*type="hidden"[^>]*value="row-sweep"/);
+  assert.match(template, /id="resolver-reveal-highlight"/);
+  assert.match(template, /id="resolver-auto-scroll-automatic"/);
+  assert.match(template, /id="resolver-auto-scroll-manual"/);
   assert.equal(template.includes("data-resolver-preset"), false);
 });
 
@@ -51,7 +55,16 @@ test("problem and contestant bulk controls use one semantic batch operation", as
   assert.match(page, /getResolvableCellsForProblem/);
   assert.match(page, /getResolvableCellsForContestant/);
   assert.match(page, /session\.revealBatch\(targets\)/);
-  assert.match(page, /!event\.target\.closest\("a"\)/);
+  assert.match(page, /ManualActionCoordinator/);
+  assert.match(page, /event\.target\.closest\("\[data-resolver-secondary-link\]"\)/);
+});
+
+test("contestant name is the reveal action and profile navigation is an explicit secondary link", async () => {
+  const page = await readFile(new URL("../page.js", import.meta.url), "utf8");
+  assert.match(page, /"strong",\s*"resolver-contestant__handle"/s);
+  assert.match(page, /profileLink\.dataset\.resolverSecondaryLink = "profile"/);
+  assert.match(page, /type: "contestant"/);
+  assert.equal(page.includes('element("a", "resolver-contestant__handle"'), false);
 });
 
 test("ranking renders with stable participation rows instead of rebuilding the table body", async () => {

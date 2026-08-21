@@ -52,7 +52,7 @@ function validatePayload(payload) {
   }
 }
 
-function normalizeBaseline(payload, requested) {
+export function resolveResolverBaseline(payload, requested) {
   const baseline =
     requested === "auto"
       ? payload.contest.official_freeze_available
@@ -112,7 +112,7 @@ export class ResolverSession {
       throw new UnsupportedResolverFormatError(formatName);
     }
 
-    this.baseline = normalizeBaseline(this.source, options.baseline ?? "auto");
+    this.baseline = resolveResolverBaseline(this.source, options.baseline ?? "auto");
     this.tieOrder = options.tieOrder ?? "seeded";
     if (this.tieOrder !== "seeded" && this.tieOrder !== "source") {
       throw new TypeError(

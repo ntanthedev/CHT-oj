@@ -297,7 +297,7 @@ msgstr "Không thể dùng toàn màn hình: %(error)s"
 
 #: resources/resolver/planner.js:84
 msgid "Authoritative first solve on problem %(problem)s."
-msgstr "Lời giải đầu tiên chính thức ở bài %(problem)s."
+msgstr "First Solve thực tế ở bài %(problem)s."
 
 #: resources/resolver/planner.js:89
 msgid "Entered the top %(rank)s award zone."
@@ -420,3 +420,79 @@ msgstr[0] "%(count)s ô"
 #: resources/resolver/timing.js:111
 msgid "Revealed problem %(problem)s."
 msgstr "Đã mở bài %(problem)s."
+
+#: resources/resolver/page.js
+msgid "Manual action queued until the current reveal finishes."
+msgstr "Đã xếp hành động thủ công; sẽ thực hiện sau khi lượt mở hiện tại hoàn tất."
+
+#: resources/resolver/page.js
+msgid "A manual action is already queued."
+msgstr "Đã có một hành động thủ công đang chờ."
+
+#: resources/resolver/page.js
+msgid "Presentation restarted from %(baseline)s."
+msgstr "Đã khởi động lại trình diễn từ %(baseline)s."
+
+#: resources/resolver/page.js resources/resolver/player.js
+msgid "Resolver settings applied."
+msgstr "Đã áp dụng thiết lập trình diễn."
+
+#: resources/resolver/page.js
+msgid "Resolver settings applied without restarting the presentation."
+msgstr "Đã áp dụng thiết lập mà không khởi động lại trình diễn."
+
+#: resources/resolver/page.js
+msgid "Playback paused while editing settings."
+msgstr "Đã tạm dừng để chỉnh sửa thiết lập."
+
+#: resources/resolver/page.js
+msgid "Settings will open after the current reveal finishes."
+msgstr "Thiết lập sẽ mở sau khi lượt mở hiện tại hoàn tất."
+
+#: resources/resolver/page.js
+msgid "Resolver settings"
+msgstr "Thiết lập trình diễn"
+
+#: resources/resolver/page.js
+msgid "Adjust presentation settings without resetting the current ceremony."
+msgstr "Điều chỉnh thiết lập mà không đặt lại phần trình diễn hiện tại."
+
+#: resources/resolver/page.js
+msgid "Apply settings"
+msgstr "Áp dụng thiết lập"
+
+#: resources/resolver/page.js
+msgid "Settings changes cancelled."
+msgstr "Đã hủy thay đổi thiết lập."
+
+#: resources/resolver/page.js
+msgid "Open profile for %(contestant)s"
+msgstr "Mở hồ sơ của %(contestant)s"
+
+#: resources/resolver/page.js
+msgid "Next"
+msgstr "Tiếp theo"
+
+#: resources/resolver/page.js
+msgid "Top %(rank)s award zone"
+msgstr "Vùng giải thưởng Top %(rank)s"
+
+#: resources/resolver/page.js
+msgid "%(reason)s Press Space or Next to continue."
+msgstr "%(reason)s Nhấn Space hoặc Tiếp theo để tiếp tục."
+
+#: resources/resolver/page.js
+msgid "Manual reveal failed: %(error)s"
+msgstr "Không thể mở kết quả thủ công: %(error)s"
+
+#: resources/resolver/planner.js
+msgid "The ceremony has reached the top %(rank)s award zone."
+msgstr "Phần trình diễn đã bắt đầu vào vùng giải thưởng Top %(rank)s."
+
+#: resources/resolver/player.js
+msgid "Playback paused while applying settings."
+msgstr "Đã tạm dừng trong khi áp dụng thiết lập."
+
+#: resources/resolver/timing.js
+msgid "Reveal complete for %(contestant)s, problem %(problem)s."
+msgstr "Đã mở xong kết quả của %(contestant)s ở bài %(problem)s."

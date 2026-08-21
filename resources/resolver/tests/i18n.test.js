@@ -49,4 +49,10 @@ test("Vietnamese Resolver catalog contains essential dynamic controls", async ()
     catalog,
     /msgid "Reveal all results for this contestant"\s+msgstr "Mở toàn bộ kết quả của thí sinh"/,
   );
+  assert.match(catalog, /msgid "Next"\s+msgstr "Tiếp theo"/);
+  assert.match(catalog, /msgid "Resolver settings"\s+msgstr "Thiết lập trình diễn"/);
+  assert.match(
+    catalog,
+    /msgid "The ceremony has reached the top %\(rank\)s award zone\."\s+msgstr "Phần trình diễn đã bắt đầu vào vùng giải thưởng Top %\(rank\)s\."/,
+  );
 });

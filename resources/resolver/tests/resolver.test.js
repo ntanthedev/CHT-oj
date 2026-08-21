@@ -515,8 +515,8 @@ test("Phase 3 presets are deterministic and Director never starts an automatic p
   assert.equal(CEREMONY_PRESETS.full.baseline, "beginning");
   assert.equal(CEREMONY_PRESETS.director.policy, "manual");
   assert.equal(CEREMONY_PRESETS.icpc.singleStepStartRank, 0);
+  assert.equal(CEREMONY_PRESETS.icpc.awardPlaces, 0);
   assert.deepEqual(CEREMONY_PRESETS.icpc.hardPauses, {
-    singleStep: false,
     award: false,
     firstSolve: false,
   });
