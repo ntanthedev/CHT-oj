@@ -8061,3 +8061,7 @@ msgstr "Bạn phải đồng ý với điều khoản để tiếp tục."
 #: judge/views/contests.py
 msgid "Wrong access code."
 msgstr "Mã truy cập không đúng."
+
+#: templates/problem/problem.html
+msgid "Download package"
+msgstr "Tải gói bài"
