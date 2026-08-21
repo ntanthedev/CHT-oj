@@ -1647,27 +1647,40 @@ class ContestProblemMakePublic(LoginRequiredMixin, ContestMixin, SingleObjectMix
     def post(self, request, *args, **kwargs):
         contest = self.get_object()
 
-        if not request.user.is_staff or not contest.is_editable_by(request.user):
+        # Contest.is_editable_by already requires edit_all_contest, or
+        # edit_own_contest plus being an organizer/curator, so it is the whole gate.
+        if not contest.is_editable_by(request.user):
             raise PermissionDenied(_('You do not have permission to edit this contest.'))
 
         now = timezone.now()
         contest_problems = contest.contest_problems.prefetch_related('problem').all()
         for contest_problem in contest_problems:
             problem = contest_problem.problem
-            # this change has 1 implication:
-            # - users only need write permissions for **private** problems
-            # This is not a bug! It improves the UX since a lot of users include
-            # public problems in their contests.
-            if problem.is_public:
-                continue
-            if not problem.is_editable_by(request.user):
-                raise PermissionDenied(_('You do not have permission to edit this problem.'))
-            problem.is_public = True
-            problem.date = now
-            problem.save(update_fields=['is_public', 'date'])
-            rescore_problem.delay(problem.id, True)
+            # Editability is decided before publishing, so a user who may only edit
+            # public problems cannot promote a private one by publishing it first.
+            is_editable = problem.is_editable_by(request.user)
 
-            Solution.objects.filter(problem=problem).update(is_public=True, publish_on=now)
+            # Write permissions are only required for **private** problems. This is
+            # not a bug: it improves the UX since a lot of users include public
+            # problems in their contests.
+            if not problem.is_public:
+                if not is_editable:
+                    raise PermissionDenied(_('You do not have permission to edit this problem.'))
+                problem.is_public = True
+                problem.date = now
+                problem.save(update_fields=['is_public', 'date'])
+                # CHT's rescore_problem takes a publicity-changed flag which drives
+                # contribution point recomputation; keep signalling it.
+                rescore_problem.delay(problem.id, True)
+
+            # Editorials are published even when the problem was already public, but
+            # only for problems this user may edit, and only if still unpublished so
+            # that an existing publish_on is never pushed forward.
+            if is_editable:
+                Solution.objects.filter(problem=problem, is_public=False).update(
+                    is_public=True,
+                    publish_on=now,
+                )
 
         return HttpResponseRedirect(reverse('contest_view', args=(contest.key,)))
 
