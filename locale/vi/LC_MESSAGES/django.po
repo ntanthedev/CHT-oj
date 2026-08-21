@@ -8081,3 +8081,31 @@ msgstr "Bạn không có quyền chỉnh sửa kỳ thi này."
 #: judge/views/contests.py
 msgid "You do not have permission to edit this problem."
 msgstr "Bạn không có quyền chỉnh sửa bài tập này."
+
+#: judge/models/ticket.py
+msgid "opened"
+msgstr "đã mở"
+
+#: judge/models/ticket.py
+msgid "closed"
+msgstr "đã đóng"
+
+#: judge/models/ticket.py
+msgid "message"
+msgstr "tin nhắn"
+
+#: judge/models/ticket.py
+msgid "action"
+msgstr "hành động"
+
+#: templates/ticket/action.html
+msgid "closed this"
+msgstr "đã đóng ticket này"
+
+#: templates/ticket/action.html
+msgid "reopened this"
+msgstr "đã mở lại ticket này"
+
+#: judge/views/ticket.py
+msgid "Status changed"
+msgstr "Trạng thái đã thay đổi"
