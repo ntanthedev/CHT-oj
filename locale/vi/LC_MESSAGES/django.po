@@ -8045,3 +8045,19 @@ msgstr "Giới hạn tối đa là 100 MB."
 #: templates/problem/data.html
 msgid "Automatic zipping is not supported in this browser. Please upload a ZIP file manually."
 msgstr "Trình duyệt này không hỗ trợ tự động nén. Vui lòng tải lên file ZIP thủ công."
+
+#: judge/models/contest.py
+msgid "terms"
+msgstr "điều khoản"
+
+#: judge/views/contests.py
+msgid "I agree to the terms and conditions"
+msgstr "Tôi đồng ý với các điều khoản và điều kiện"
+
+#: judge/views/contests.py
+msgid "You must agree to the terms to continue."
+msgstr "Bạn phải đồng ý với điều khoản để tiếp tục."
+
+#: judge/views/contests.py
+msgid "Wrong access code."
+msgstr "Mã truy cập không đúng."
