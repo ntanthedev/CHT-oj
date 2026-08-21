@@ -8065,3 +8065,19 @@ msgstr "Mã truy cập không đúng."
 #: templates/problem/problem.html
 msgid "Download package"
 msgstr "Tải gói bài"
+
+#: templates/contest/contest.html
+msgid "Make All Problems Public"
+msgstr "Công khai tất cả bài tập"
+
+#: templates/contest/contest.html
+msgid "Are you sure you want to make all problems in this contest public?"
+msgstr "Bạn có chắc muốn công khai tất cả bài tập trong kỳ thi này?"
+
+#: judge/views/contests.py
+msgid "You do not have permission to edit this contest."
+msgstr "Bạn không có quyền chỉnh sửa kỳ thi này."
+
+#: judge/views/contests.py
+msgid "You do not have permission to edit this problem."
+msgstr "Bạn không có quyền chỉnh sửa bài tập này."
