@@ -7977,3 +7977,71 @@ msgstr "Tổng AC"
 #: templates/contest/spotlight-ranking.html
 msgid "Use 0 to keep continuous playback."
 msgstr "Dùng 0 để tiếp tục chạy liên tục."
+
+#: templates/problem/data.html
+msgid "or click here to build zip file"
+msgstr "hoặc nhấn vào đây để tạo file zip"
+
+#: templates/problem/data.html
+msgid "No files selected"
+msgstr "Chưa chọn tập tin nào"
+
+#: templates/problem/data.html
+msgid "files selected"
+msgstr "tập tin đã chọn"
+
+#: templates/problem/data.html
+msgid "and"
+msgstr "và"
+
+#: templates/problem/data.html
+msgid "more files"
+msgstr "tập tin khác"
+
+#: templates/problem/data.html
+msgid "Adding files..."
+msgstr "Đang thêm tập tin..."
+
+#: templates/problem/data.html
+msgid "Compressing..."
+msgstr "Đang nén..."
+
+#: templates/problem/data.html
+msgid "Failed to create ZIP file"
+msgstr "Tạo file ZIP thất bại"
+
+#: templates/problem/data.html
+msgid "Build & Upload ZIP"
+msgstr "Tạo & Tải lên ZIP"
+
+#: templates/problem/data.html
+msgid "Build Test Data"
+msgstr "Tạo dữ liệu test"
+
+#: templates/problem/data.html
+msgid "Choose Files"
+msgstr "Chọn tập tin"
+
+#: templates/problem/data.html
+msgid "Choose Folder"
+msgstr "Chọn thư mục"
+
+#: templates/problem/data.html
+msgid "Drop files or folder here"
+msgstr "Kéo thả tập tin hoặc thư mục vào đây"
+
+#: templates/problem/data.html
+msgid "File too large!"
+msgstr "File quá lớn!"
+
+#: templates/problem/data.html
+msgid "Your file is"
+msgstr "File của bạn là"
+
+#: templates/problem/data.html
+msgid "Maximum allowed is 100 MB."
+msgstr "Giới hạn tối đa là 100 MB."
+
+#: templates/problem/data.html
+msgid "Automatic zipping is not supported in this browser. Please upload a ZIP file manually."
+msgstr "Trình duyệt này không hỗ trợ tự động nén. Vui lòng tải lên file ZIP thủ công."
