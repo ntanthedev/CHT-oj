@@ -1493,9 +1493,18 @@ class EditContest(ContestMixin, LoginRequiredMixin, TitleMixin, UpdateView):
                                                 form_kwargs={'user': self.request.user})
         return ProposeContestProblemFormSet(instance=self.get_object(), form_kwargs={'user': self.request.user})
 
+    def get_contest_org(self):
+        # The split organization/public problem picker needs one unambiguous
+        # organization. Contests attached to several organizations fall back to
+        # the general visible-problem picker rather than guessing one of them.
+        if self.object.organizations.count() != 1:
+            return None
+        return self.object.organizations.first()
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data['contest_problem_formset'] = self.get_contest_problem_formset()
+        data['contest_org'] = self.get_contest_org()
         return data
 
     def post(self, request, *args, **kwargs):

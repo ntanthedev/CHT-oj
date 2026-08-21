@@ -8109,3 +8109,11 @@ msgstr "đã mở lại ticket này"
 #: judge/views/ticket.py
 msgid "Status changed"
 msgstr "Trạng thái đã thay đổi"
+
+#: templates/contest/edit.html
+msgid "Organization problems"
+msgstr "Bài tập của tổ chức"
+
+#: templates/contest/edit.html
+msgid "Public problems"
+msgstr "Bài tập công khai"
