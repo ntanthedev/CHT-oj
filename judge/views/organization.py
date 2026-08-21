@@ -669,6 +669,14 @@ class ContestCreateOrganization(AdminOrganizationMixin, CreateContest):
         kwargs['org_pk'] = self.organization.pk
         return kwargs
 
+    def get_context_data(self, **kwargs):
+        # The contest is always created for exactly this organization, so the
+        # split organization/public problem picker in contest/edit.html has an
+        # unambiguous organization to scope its Select2 endpoint to.
+        context = super().get_context_data(**kwargs)
+        context['contest_org'] = self.organization
+        return context
+
     def save_contest_form(self, form):
         self.object = form.save()
         self.object.authors.add(self.request.profile)

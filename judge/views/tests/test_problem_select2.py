@@ -1,6 +1,10 @@
+from unittest.mock import patch
+
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
+from judge.models import Contest
 from judge.models.tests.util import create_contest, create_organization, create_problem, create_user
 
 
@@ -214,3 +218,91 @@ class ContestEditPickerInitialTabTestCase(TestCase):
         html = self._edit_html()
         self.assertIn('data-problem-src="public"', html)
         self.assertIn('[plainprob] Plain Problem', html)
+
+
+@override_settings(MOSS_API_KEY=None)
+class ContestCreateOrganizationPickerTestCase(TestCase):
+    """The split picker must also be available while *creating* an organization contest."""
+
+    fixtures = ['language_all.json', 'navbar.json']
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.org_admin = create_user(
+            username='create_org_admin',
+            user_permissions=('create_private_contest', 'add_contest'),
+        )
+        cls.outsider = create_user(username='create_outsider')
+        cls.org = create_organization(name='Zeta', admins=('create_org_admin',))
+        cls.org_problem = create_problem(
+            code='zetaprob',
+            name='Zeta Problem',
+            is_public=True,
+            is_organization_private=True,
+            organizations=('Zeta',),
+        )
+
+    def _url(self):
+        return reverse('contest_create_organization', args=[self.org.slug])
+
+    def _create_page(self):
+        self.client.force_login(self.org_admin)
+        response = self.client.get(self._url())
+        self.assertEqual(response.status_code, 200)
+        return response
+
+    def test_create_page_enables_the_split_picker(self):
+        self.assertContains(self._create_page(), 'data-problem-src')
+
+    def test_create_page_offers_both_problem_sources(self):
+        response = self._create_page()
+        self.assertContains(response, 'Organization problems')
+        self.assertContains(response, 'Public problems')
+
+    def test_org_endpoint_points_at_this_organization(self):
+        response = self._create_page()
+        self.assertContains(response, reverse('org_problem_select2', args=[self.org.id]))
+
+    def test_public_endpoint_is_present(self):
+        self.assertContains(self._create_page(), reverse('public_problem_select2'))
+
+    def test_org_endpoint_is_not_another_organization(self):
+        other = create_organization(name='Eta', admins=('create_org_admin',))
+        response = self._create_page()
+        self.assertNotContains(response, reverse('org_problem_select2', args=[other.id]))
+
+    def test_non_admin_cannot_open_the_create_page(self):
+        self.client.force_login(self.outsider)
+        response = self.client.get(self._url())
+        self.assertNotEqual(response.status_code, 200)
+
+    @patch('judge.views.contests.on_new_contest')
+    def test_creating_a_contest_still_works(self, mock_on_new_contest):
+        self.client.force_login(self.org_admin)
+        now = timezone.now()
+        response = self.client.post(self._url(), {
+            'key': 'zeta_picker',
+            'name': 'Zeta Picker Contest',
+            'start_time': (now + timezone.timedelta(days=1)).strftime('%Y-%m-%d %H:%M:%S'),
+            'end_time': (now + timezone.timedelta(days=2)).strftime('%Y-%m-%d %H:%M:%S'),
+            'scoreboard_visibility': Contest.SCOREBOARD_VISIBLE,
+            'format_name': 'default',
+            'description': '',
+            'contest_problems-TOTAL_FORMS': '1',
+            'contest_problems-INITIAL_FORMS': '0',
+            'contest_problems-MIN_NUM_FORMS': '0',
+            'contest_problems-MAX_NUM_FORMS': '1000',
+            'contest_problems-0-problem': str(self.org_problem.id),
+            'contest_problems-0-points': '100',
+            'contest_problems-0-order': '1',
+            'contest_problems-0-max_submissions': '',
+        })
+
+        self.assertEqual(response.status_code, 302, getattr(response, 'context', None))
+        contest = Contest.objects.get(key='zeta_picker')
+        self.assertTrue(contest.is_organization_private)
+        self.assertEqual(list(contest.organizations.all()), [self.org])
+        self.assertEqual(
+            list(contest.contest_problems.values_list('problem_id', flat=True)),
+            [self.org_problem.id],
+        )
