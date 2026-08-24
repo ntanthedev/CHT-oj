@@ -274,7 +274,7 @@ class ContestCreateOrganizationPickerTestCase(TestCase):
     def test_non_admin_cannot_open_the_create_page(self):
         self.client.force_login(self.outsider)
         response = self.client.get(self._url())
-        self.assertNotEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 403)
 
     @patch('judge.views.contests.on_new_contest')
     def test_creating_a_contest_still_works(self, mock_on_new_contest):
