@@ -47,9 +47,9 @@ from judge.contest_format import ICPCContestFormat
 from judge.forms import ContestAnnouncementForm, ContestCloneForm, ContestDownloadDataForm, ContestForm, \
     ProposeContestProblemFormSet
 from judge.models import Contest, ContestAnnouncement, ContestMoss, ContestParticipation, ContestProblem, ContestTag, \
-    Organization, Problem, ProblemClarification, Profile, Submission, WarningLog
+    Organization, Problem, ProblemClarification, Profile, Solution, Submission, WarningLog
 from judge.resolver import ResolverPayloadError, build_resolver_payload
-from judge.tasks import on_new_contest, prepare_contest_data, run_moss
+from judge.tasks import on_new_contest, prepare_contest_data, rescore_problem, run_moss
 from judge.utils.celery import redirect_to_task_status, task_status_by_id, task_status_url_by_id
 from judge.utils.cms import parse_csv_ranking
 from judge.utils.opengraph import generate_opengraph
@@ -62,7 +62,8 @@ from judge.utils.views import DiggPaginatorMixin, QueryStringSortMixin, SingleOb
 __all__ = ['ContestList', 'ContestDetail', 'ContestRanking', 'ContestJoin', 'ContestLeave', 'ContestCalendar',
            'ContestClone', 'ContestStats', 'ContestMossView', 'ContestMossDelete',
            'ContestParticipationList', 'ContestParticipationDisqualify', 'get_contest_ranking_list',
-           'base_contest_ranking_list', 'ComputeMoss', 'ExportMoss', 'SpotlightContestRanking', 'ContestTagList']
+           'base_contest_ranking_list', 'ComputeMoss', 'ExportMoss', 'SpotlightContestRanking',
+           'ContestTagList', 'ContestProblemMakePublic']
 
 
 def _find_contest(request, key, private_check=True):
@@ -362,6 +363,30 @@ class ContestMixin(object):
         except PermissionDenied as e:
             return generic_message(request, _('Permission denied'), e)
 
+    def show_entry_form(self, form=None):
+        contest = self.object
+        return render(self.request, 'contest/access_code.html', {
+            'form': form or ContestEntryForm(),
+            'contest': contest,
+            'title': contest.name,
+            'needs_terms': bool(not self.can_edit and contest.terms),
+            'needs_access_code': bool(not self.can_edit and contest.access_code),
+        })
+
+    def handle_entry_post(self, request, action):
+        contest = self.object
+        form = ContestEntryForm(request.POST)
+        if not form.is_valid():
+            return self.show_entry_form(form)
+        if not self.can_edit and contest.terms and not form.cleaned_data.get('terms_agreed'):
+            form.add_error('terms_agreed', _('You must agree to the terms to continue.'))
+            return self.show_entry_form(form)
+        if not self.can_edit and contest.access_code and \
+                form.cleaned_data.get('access_code') != contest.access_code:
+            form.add_error('access_code', _('Wrong access code.'))
+            return self.show_entry_form(form)
+        return action(request)
+
 
 class ContestDetail(ContestMixin, TitleMixin, CommentedDetailView):
     template_name = 'contest/contest.html'
@@ -533,40 +558,30 @@ class ContestAnnounce(ContestMixin, TitleMixin, SingleObjectFormView):
         return HttpResponseRedirect(reverse('contest_view', args=(contest.key,)))
 
 
-class ContestAccessDenied(Exception):
-    pass
-
-
-class ContestAccessCodeForm(forms.Form):
-    access_code = forms.CharField(max_length=255)
+class ContestEntryForm(forms.Form):
+    terms_agreed = forms.BooleanField(required=False, label=_('I agree to the terms and conditions'))
+    access_code = forms.CharField(max_length=255, required=False)
 
     def __init__(self, *args, **kwargs):
-        super(ContestAccessCodeForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.fields['access_code'].widget.attrs.update({'autocomplete': 'off'})
 
 
 class ContestRegister(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        return self.ask_for_access_code()
+        return self.show_entry_form()
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        try:
-            return self.register_contest(request)
-        except ContestAccessDenied:
-            if request.POST.get('access_code'):
-                return self.ask_for_access_code(ContestAccessCodeForm(request.POST))
-            else:
-                return HttpResponseRedirect(request.path)
+        return self.handle_entry_post(request, self.register_contest)
 
-    def register_contest(self, request, access_code=None):
-        contest = self.object
-        profile = request.profile
-
+    def register_contest(self, request):
         if self.is_editor or self.is_tester:
             return generic_message(request, _('Cannot register'),
                                    _('You cannot register for this contest.'))
+        contest = self.object
+        profile = request.profile
 
         if not request.user.is_superuser and contest.banned_users.filter(id=profile.id).exists():
             return generic_message(request, _('Banned from joining'),
@@ -581,23 +596,15 @@ class ContestRegister(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View)
             return generic_message(request, _('Cannot register'),
                                    _('You cannot register for this contest now.'))
 
-        requires_access_code = (not self.can_edit and contest.access_code and access_code != contest.access_code)
         if contest.ended:
             return generic_message(request, _('Contest has ended'),
                                    _('"%s" has ended.') % contest.name)
         else:
-            if self.is_editor or self.is_tester:
-                return generic_message(request, _('Cannot register'),
-                                       _('You cannot register for this contest.'))
-
             try:
                 ContestParticipation.objects.get(
                     contest=contest, user=profile, virtual=0,
                 )
             except ContestParticipation.DoesNotExist:
-                if requires_access_code:
-                    raise ContestAccessDenied()
-
                 ContestParticipation.objects.create(
                     contest=contest, user=profile, virtual=0,
                     real_start=datetime(1970, 1, 1, tzinfo=timezone.utc),
@@ -610,41 +617,21 @@ class ContestRegister(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View)
         contest.update_user_count()
         return HttpResponseRedirect(reverse('contest_view', args=(contest.key,)))
 
-    def ask_for_access_code(self, form=None):
-        contest = self.object
-        wrong_code = False
-        if form:
-            if form.is_valid():
-                if form.cleaned_data['access_code'] == contest.access_code:
-                    return self.register_contest(self.request, form.cleaned_data['access_code'])
-                wrong_code = True
-        else:
-            form = ContestAccessCodeForm()
-        return render(self.request, 'contest/access_code.html', {
-            'form': form, 'wrong_code': wrong_code,
-            'title': _('Enter access code for "%s"') % contest.name,
-        })
-
 
 class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
     def get(self, request, *args, **kwargs):
         self.object = self.get_object()
-        return self.ask_for_access_code()
+        return self.show_entry_form()
 
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
-        try:
-            return self.join_contest(request)
-        except ContestAccessDenied:
-            if request.POST.get('access_code'):
-                return self.ask_for_access_code(ContestAccessCodeForm(request.POST))
-            else:
-                return HttpResponseRedirect(request.path)
+        return self.handle_entry_post(request, self.join_contest)
 
-    def join_contest(self, request, access_code=None):
+    def join_contest(self, request):
         contest = self.object
+        can_only_spectate = self.is_editor or self.is_tester
 
-        if not contest.can_join and not (self.is_editor or self.is_tester):
+        if not contest.can_join and not can_only_spectate:
             return generic_message(request, _('Contest not ongoing'),
                                    _('"%s" is not currently ongoing.') % contest.name)
 
@@ -658,21 +645,15 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
         # Conditions for joining a contest:
         #   - If contest has ended, allow virtual joining iff:
         #       - contest.disallow_virtual is False
-        #       - requires_access_code is False
         #   - If contest is ongoing, allow joining iff:
         #       - Not editor or tester
         #       - Registered if registration windows has ended
-        #       - requires_access_code is False
-        #   - Editors/Testers can only spectate live contests and only when requires_access_code is False.
+        #   - Editors/Testers can only spectate live contests
 
-        requires_access_code = (not self.can_edit and contest.access_code and access_code != contest.access_code)
         if contest.ended:
             if contest.disallow_virtual:
                 return generic_message(request, _('Virtual joining not allowed'),
                                        _('Virtual joining is not allowed for this contest.'))
-
-            if requires_access_code:
-                raise ContestAccessDenied()
 
             while True:
                 virtual_id = max((ContestParticipation.objects.filter(contest=contest, user=profile)
@@ -690,7 +671,6 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
         else:
             SPECTATE = ContestParticipation.SPECTATE
             LIVE = ContestParticipation.LIVE
-            can_only_spectate = self.is_editor or self.is_tester
             try:
                 participation = ContestParticipation.objects.get(
                     contest=contest, user=profile, virtual=(SPECTATE if can_only_spectate else LIVE),
@@ -699,9 +679,6 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
                 if contest.require_registration and not contest.can_register and not can_only_spectate:
                     return generic_message(request, _('Not registered'),
                                            _('You are not registered for this contest.'))
-
-                if requires_access_code:
-                    raise ContestAccessDenied()
 
                 participation = ContestParticipation.objects.create(
                     contest=contest, user=profile, virtual=(SPECTATE if can_only_spectate else LIVE),
@@ -724,21 +701,6 @@ class ContestJoin(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
         contest._updating_stats_only = True
         contest.update_user_count()
         return HttpResponseRedirect(reverse('contest_view', args=(contest.key,)))
-
-    def ask_for_access_code(self, form=None):
-        contest = self.object
-        wrong_code = False
-        if form:
-            if form.is_valid():
-                if form.cleaned_data['access_code'] == contest.access_code:
-                    return self.join_contest(self.request, form.cleaned_data['access_code'])
-                wrong_code = True
-        else:
-            form = ContestAccessCodeForm()
-        return render(self.request, 'contest/access_code.html', {
-            'form': form, 'wrong_code': wrong_code,
-            'title': _('Enter access code for "%s"') % contest.name,
-        })
 
 
 class ContestLeave(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
@@ -1531,9 +1493,18 @@ class EditContest(ContestMixin, LoginRequiredMixin, TitleMixin, UpdateView):
                                                 form_kwargs={'user': self.request.user})
         return ProposeContestProblemFormSet(instance=self.get_object(), form_kwargs={'user': self.request.user})
 
+    def get_contest_org(self):
+        # The split organization/public problem picker needs one unambiguous
+        # organization. Contests attached to several organizations fall back to
+        # the general visible-problem picker rather than guessing one of them.
+        if self.object.organizations.count() != 1:
+            return None
+        return self.object.organizations.first()
+
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         data['contest_problem_formset'] = self.get_contest_problem_formset()
+        data['contest_org'] = self.get_contest_org()
         return data
 
     def post(self, request, *args, **kwargs):
@@ -1664,6 +1635,54 @@ class ContestDownloadData(ContestDataMixin, SingleObjectMixin, View):
         response['Content-Type'] = 'application/zip'
         response['Content-Disposition'] = 'attachment; filename=%s-data.zip' % self.object.key
         return response
+
+
+class ContestProblemMakePublic(LoginRequiredMixin, ContestMixin, SingleObjectMixin, View):
+    def dispatch(self, request, *args, **kwargs):
+        if request.method != 'POST':
+            return HttpResponseForbidden()
+
+        return super(ContestProblemMakePublic, self).dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        contest = self.get_object()
+
+        # Contest.is_editable_by already requires edit_all_contest, or
+        # edit_own_contest plus being an organizer/curator, so it is the whole gate.
+        if not contest.is_editable_by(request.user):
+            raise PermissionDenied(_('You do not have permission to edit this contest.'))
+
+        now = timezone.now()
+        contest_problems = contest.contest_problems.prefetch_related('problem').all()
+        for contest_problem in contest_problems:
+            problem = contest_problem.problem
+            # Editability is decided before publishing, so a user who may only edit
+            # public problems cannot promote a private one by publishing it first.
+            is_editable = problem.is_editable_by(request.user)
+
+            # Write permissions are only required for **private** problems. This is
+            # not a bug: it improves the UX since a lot of users include public
+            # problems in their contests.
+            if not problem.is_public:
+                if not is_editable:
+                    raise PermissionDenied(_('You do not have permission to edit this problem.'))
+                problem.is_public = True
+                problem.date = now
+                problem.save(update_fields=['is_public', 'date'])
+                # CHT's rescore_problem takes a publicity-changed flag which drives
+                # contribution point recomputation; keep signalling it.
+                rescore_problem.delay(problem.id, True)
+
+            # Editorials are published even when the problem was already public, but
+            # only for problems this user may edit, and only if still unpublished so
+            # that an existing publish_on is never pushed forward.
+            if is_editable:
+                Solution.objects.filter(problem=problem, is_public=False).update(
+                    is_public=True,
+                    publish_on=now,
+                )
+
+        return HttpResponseRedirect(reverse('contest_view', args=(contest.key,)))
 
 
 @method_decorator(staff_member_required, name='dispatch')

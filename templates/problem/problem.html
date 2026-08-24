@@ -180,6 +180,9 @@
         {% if not problem.is_manually_managed %}
             <div><a href="{{ url('problem_data', problem.code) }}">{{ _('Edit test data') }}</a></div>
         {% endif %}
+        <div>
+            <a href="{{ url('problem_download_full_package', problem.code) }}">{{ _('Download package') }}</a>
+        </div>
     {% elif request.user.is_authenticated and has_tickets %}
         <hr>
         <div>
