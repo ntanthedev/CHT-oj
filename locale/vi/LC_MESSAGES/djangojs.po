@@ -496,3 +496,15 @@ msgstr "Đã tạm dừng trong khi áp dụng thiết lập."
 #: resources/resolver/timing.js
 msgid "Reveal complete for %(contestant)s, problem %(problem)s."
 msgstr "Đã mở xong kết quả của %(contestant)s ở bài %(problem)s."
+
+#: resources/resolver/page.js
+msgid "Official freeze is configured but has not started yet."
+msgstr "Official freeze đã được cấu hình nhưng chưa bắt đầu."
+
+#: resources/resolver/page.js
+msgid "This Resolver snapshot was created before the contest ended. Refresh to load the latest results."
+msgstr "Snapshot Resolver này được tạo trước khi kỳ thi kết thúc. Hãy tải lại để lấy kết quả mới nhất."
+
+#: resources/resolver/page.js
+msgid "This is a live Resolver snapshot created before the contest ended. Refresh after the contest ends before presenting final results."
+msgstr "Đây là snapshot Resolver trực tiếp được tạo trước khi kỳ thi kết thúc. Hãy tải lại sau khi kỳ thi kết thúc trước khi trình diễn kết quả cuối cùng."

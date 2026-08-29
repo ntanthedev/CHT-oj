@@ -29,6 +29,7 @@ import {
   ResolverSettingsManager,
   normalizeResolverSettings,
 } from "./settings.js";
+import { getResolverSnapshotStatus } from "./snapshot.js";
 
 function element(tagName, className = "", text = null) {
   const node = document.createElement(tagName);
@@ -99,6 +100,7 @@ export class ResolverPage {
     this.problemHeaderButtons = new Map();
     this.rowElements = new Map();
     this.totalRow = null;
+    this.snapshotTimer = null;
 
     this.nodes = {
       setup: root.querySelector("#resolver-setup"),
@@ -125,6 +127,9 @@ export class ResolverPage {
       pauseAward: root.querySelector('[name="pause_award"]'),
       pauseFirstSolve: root.querySelector('[name="pause_first_solve"]'),
       freezeNote: root.querySelector("#resolver-freeze-note"),
+      snapshotWarning: root.querySelector("#resolver-snapshot-warning"),
+      snapshotMessage: root.querySelector("#resolver-snapshot-message"),
+      snapshotRefresh: root.querySelector("#resolver-snapshot-refresh"),
       workspace: root.querySelector("#resolver-workspace"),
       table: root.querySelector("#ranking-table"),
       tableHead: root.querySelector("#resolver-table-head"),
@@ -176,6 +181,7 @@ export class ResolverPage {
 
   mount() {
     this._configureSetup();
+    this._configureSnapshotSafety();
     this._applyPreset("icpc");
     this._bindEvents();
     this.nodes.setup.hidden = false;
@@ -183,7 +189,11 @@ export class ResolverPage {
   }
 
   _configureSetup() {
-    const freezeAvailable = this.payload.contest.official_freeze_available;
+    const freezeAvailable =
+      this.payload.contest.official_freeze_baseline_available ??
+      this.payload.contest.official_freeze_available;
+    const freezeConfigured = this.payload.contest.freeze_configured ?? freezeAvailable;
+    const freezeReached = this.payload.contest.freeze_reached ?? freezeAvailable;
     const autoOption = this.nodes.baseline.querySelector('option[value="auto"]');
     const freezeOption = this.nodes.baseline.querySelector('option[value="official-freeze"]');
     autoOption.textContent = freezeAvailable
@@ -194,11 +204,68 @@ export class ResolverPage {
     this.nodes.awardPlaces.value = String(this.awardPlaces);
     this.nodes.singleStepStartRank.max = String(this.payload.contestants.length);
     this.nodes.singleStepStartRank.value = String(this.singleStepStartRank);
-    this.nodes.freezeNote.textContent = freezeAvailable
-      ? gettext("Official freeze — %(minutes)s min", {
-          minutes: this.payload.contest.frozen_last_minutes,
-        })
-      : gettext("Beginning");
+    if (freezeAvailable) {
+      this.nodes.freezeNote.textContent = gettext("Official freeze — %(minutes)s min", {
+        minutes: this.payload.contest.frozen_last_minutes,
+      });
+    } else if (freezeConfigured && !freezeReached) {
+      this.nodes.freezeNote.textContent = gettext(
+        "Official freeze is configured but has not started yet.",
+      );
+    } else {
+      this.nodes.freezeNote.textContent = gettext("Beginning");
+    }
+  }
+
+  _snapshotStatus() {
+    return getResolverSnapshotStatus(this.payload.contest);
+  }
+
+  _configureSnapshotSafety() {
+    this.nodes.snapshotRefresh.addEventListener("click", () => window.location.reload());
+    this._renderSnapshotSafety();
+    this._scheduleSnapshotExpiry();
+  }
+
+  _scheduleSnapshotExpiry() {
+    if (this.snapshotTimer !== null) {
+      globalThis.clearTimeout(this.snapshotTimer);
+      this.snapshotTimer = null;
+    }
+    if (this.session) {
+      return;
+    }
+    const status = this._snapshotStatus();
+    if (status.kind !== "live" || status.remainingMs === null) {
+      return;
+    }
+    const delay = Math.min(status.remainingMs + 50, 2_147_483_647);
+    this.snapshotTimer = globalThis.setTimeout(() => {
+      this.snapshotTimer = null;
+      this._renderSnapshotSafety();
+      this._scheduleSnapshotExpiry();
+    }, delay);
+  }
+
+  _renderSnapshotSafety() {
+    if (this.session) {
+      this.nodes.snapshotWarning.hidden = true;
+      return;
+    }
+    const status = this._snapshotStatus();
+    if (status.kind === "final" || status.kind === "unknown") {
+      this.nodes.snapshotWarning.hidden = true;
+      return;
+    }
+    this.nodes.snapshotWarning.hidden = false;
+    this.nodes.snapshotMessage.textContent = status.stale
+      ? gettext(
+          "This Resolver snapshot was created before the contest ended. Refresh to load the latest results.",
+        )
+      : gettext(
+          "This is a live Resolver snapshot created before the contest ended. Refresh after the contest ends before presenting final results.",
+        );
+    this.nodes.setupSubmit.disabled = status.stale;
   }
 
   _bindEvents() {
@@ -403,6 +470,11 @@ export class ResolverPage {
   }
 
   _startFromSetup({ restarting = false } = {}) {
+    if (!this.session && this._snapshotStatus().stale) {
+      this._renderSnapshotSafety();
+      this.nodes.snapshotRefresh.focus();
+      return null;
+    }
     this._pausePlayback();
     const settings = this._readSettingsForm();
     try {
@@ -410,6 +482,7 @@ export class ResolverPage {
         baseline: settings.baseline,
         tieOrder: this.nodes.tieOrder.value,
       });
+      this._scheduleSnapshotExpiry();
     } catch (error) {
       this.nodes.freezeNote.textContent = gettext("Resolver could not start: %(error)s", {
         error: error.message,
@@ -529,6 +602,7 @@ export class ResolverPage {
     this.nodes.restartWarning.hidden = true;
     this.nodes.restartPresentation.hidden = true;
     this.nodes.setupSubmit.disabled = false;
+    this._renderSnapshotSafety();
     this.nodes.workspace.hidden = true;
     this.nodes.setup.hidden = false;
     this.nodes.baseline.focus();

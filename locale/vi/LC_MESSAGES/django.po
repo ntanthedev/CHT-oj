@@ -8065,3 +8065,7 @@ msgstr "Tiến tới điểm dừng trình diễn hoặc mở kết quả tiếp
 #: templates/contest/spotlight-ranking.html
 msgid "Return to the previous presentation checkpoint"
 msgstr "Quay về mốc trình diễn trước"
+
+#: templates/contest/spotlight-ranking.html
+msgid "Refresh results"
+msgstr "Tải lại kết quả"

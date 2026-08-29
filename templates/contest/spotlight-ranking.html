@@ -36,6 +36,17 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
         <strong>{{ _('Start information') }}</strong>
         <p id="resolver-freeze-note" class="resolver-setup__note"></p>
       </div>
+      <div
+        id="resolver-snapshot-warning"
+        class="alert alert-warning resolver-snapshot-warning"
+        role="alert"
+        hidden
+      >
+        <p id="resolver-snapshot-message"></p>
+        <button id="resolver-snapshot-refresh" type="button" class="button resolver-button">
+          <i class="fa fa-refresh"></i> {{ _('Refresh results') }}
+        </button>
+      </div>
       <div class="resolver-setup__primary">
         <div class="resolver-field">
           <label for="resolver-speed">{{ _('Speed') }}</label>

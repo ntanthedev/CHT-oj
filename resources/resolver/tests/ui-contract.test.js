@@ -36,6 +36,8 @@ test("presenter setup keeps engine details advanced and the HUD hidden by defaul
   assert.match(template, /id="resolver-auto-scroll-automatic"/);
   assert.match(template, /id="resolver-auto-scroll-manual"/);
   assert.equal(template.includes("data-resolver-preset"), false);
+  assert.match(template, /id="resolver-snapshot-warning"[^>]*role="alert"[^>]*hidden/);
+  assert.match(template, /id="resolver-snapshot-refresh"[^>]*type="button"/);
 });
 
 test("presenter toolbar exposes common actions and uses an accessible icon-only overflow", async () => {

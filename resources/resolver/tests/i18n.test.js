@@ -55,4 +55,12 @@ test("Vietnamese Resolver catalog contains essential dynamic controls", async ()
     catalog,
     /msgid "The ceremony has reached the top %\(rank\)s award zone\."\s+msgstr "Phần trình diễn đã bắt đầu vào vùng giải thưởng Top %\(rank\)s\."/,
   );
+  assert.match(
+    catalog,
+    /msgid "Official freeze is configured but has not started yet\."\s+msgstr "Official freeze đã được cấu hình nhưng chưa bắt đầu\."/,
+  );
+  assert.match(
+    catalog,
+    /msgid "This Resolver snapshot was created before the contest ended\. Refresh to load the latest results\."\s+msgstr "Snapshot Resolver này được tạo trước khi kỳ thi kết thúc\. Hãy tải lại để lấy kết quả mới nhất\."/,
+  );
 });

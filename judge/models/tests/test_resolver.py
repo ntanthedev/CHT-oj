@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -141,6 +142,12 @@ class ResolverPayloadTestCase(TestCase):
         self.assertEqual(payload['contest']['format'], 'icpc')
         self.assertEqual(payload['contest']['format_config'], {'penalty': 17})
         self.assertEqual(payload['contest']['rank_display_options'], self.contest.rank_display_options)
+        self.assertEqual(payload['contest']['contest_end_time'], self.contest.end_time.isoformat())
+        self.assertTrue(timezone.is_aware(datetime.fromisoformat(payload['contest']['generated_at'])))
+        self.assertTrue(payload['contest']['contest_ended_at_generation'])
+        self.assertTrue(payload['contest']['freeze_configured'])
+        self.assertTrue(payload['contest']['freeze_reached'])
+        self.assertTrue(payload['contest']['official_freeze_baseline_available'])
         self.assertTrue(payload['contest']['official_freeze_available'])
         self.assertEqual(
             [(problem['id'], problem['label'], problem['order']) for problem in payload['problems']],
@@ -193,6 +200,8 @@ class ResolverPayloadTestCase(TestCase):
             frozen_last_minutes=0,
         ))
         self.assertEqual(payload['contest']['format_config'], {})
+        self.assertFalse(payload['contest']['freeze_configured'])
+        self.assertFalse(payload['contest']['freeze_reached'])
         self.assertFalse(payload['contest']['official_freeze_available'])
         contestant = payload['contestants'][0]
         self.assertIsNone(contestant['frozen'])
@@ -202,6 +211,25 @@ class ResolverPayloadTestCase(TestCase):
             'final': {'points': 0.5, 'time': 125},
             'frozen': None,
         })
+
+    def test_configured_official_freeze_is_unavailable_until_the_freeze_window_is_reached(self):
+        now = timezone.now()
+        payload = build_resolver_payload(self.fresh_contest(
+            start_time=now - timezone.timedelta(hours=2),
+            end_time=now + timezone.timedelta(hours=2),
+            format_name='icpc',
+            frozen_last_minutes=60,
+        ))
+
+        self.assertFalse(payload['contest']['contest_ended_at_generation'])
+        self.assertTrue(payload['contest']['freeze_configured'])
+        self.assertFalse(payload['contest']['freeze_reached'])
+        self.assertFalse(payload['contest']['official_freeze_baseline_available'])
+        self.assertFalse(payload['contest']['official_freeze_available'])
+        self.assertIsNone(payload['contestants'][0]['frozen'])
+        self.assertIsNone(
+            payload['contestants'][0]['problems'][str(self.earlier_problem.id)]['frozen'],
+        )
 
     def test_rank_display_options_are_serialized_without_an_independent_resolver_default(self):
         for option in (
@@ -364,6 +392,14 @@ class ResolverPayloadTestCase(TestCase):
         self.assertNotIn(resolver_url, render_tabs(self.spotlight_user, False))
         self.assertIn(resolver_url, render_tabs(self.editor, True))
 
+        Contest.objects.filter(pk=self.contest.pk).update(
+            start_time=timezone.now() + timezone.timedelta(hours=1),
+            end_time=timezone.now() + timezone.timedelta(hours=3),
+        )
+        self.assertNotIn(resolver_url, render_tabs(self.normal_user, False))
+        self.assertNotIn(resolver_url, render_tabs(self.spotlight_user, False))
+        self.assertIn(resolver_url, render_tabs(self.editor, True))
+
     def test_legacy_allow_spotlight_is_not_presented_as_an_access_control(self):
         admin_fields = {
             field
@@ -392,6 +428,8 @@ class ResolverPayloadTestCase(TestCase):
         self.assertIn('id="resolver-fullscreen"', source)
         self.assertIn('id="resolver-autoplay"', source)
         self.assertIn('id="resolver-advanced"', source)
+        self.assertIn('id="resolver-snapshot-warning"', source)
+        self.assertIn('id="resolver-snapshot-refresh"', source)
         self.assertNotIn('data-resolver-preset=', source)
         self.assertIn('resolver/resolver.css', source)
         self.assertIn('resolver/bootstrap.js', source)

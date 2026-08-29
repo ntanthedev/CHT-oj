@@ -43,6 +43,10 @@
   margin-top: 0.2em;
 }
 
+.resolver-snapshot-warning p {
+  margin: 0 0 0.75em;
+}
+
 .resolver-setup__primary {
   display: flex;
   flex-wrap: wrap;

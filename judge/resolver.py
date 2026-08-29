@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db.models import Count, Prefetch
+from django.utils import timezone
 
 from judge.jinja2.gravatar import fallback as gravatar_fallback, gravatar
 from judge.models import ContestParticipation, Organization
@@ -182,6 +183,8 @@ def build_resolver_payload(contest):
     if format_name not in SUPPORTED_RESOLVER_FORMATS:
         raise ResolverUnsupportedFormat(format_name)
 
+    generated_at = timezone.now()
+
     problems = list(
         contest.contest_problems.select_related('problem').defer('problem__description').order_by('order'),
     )
@@ -225,9 +228,11 @@ def build_resolver_payload(contest):
         for index, participation_id in enumerate(frozen_participation_ids)
     }
 
-    official_freeze_available = (
+    freeze_configured = (
         format_name in FROZEN_RESOLVER_FORMATS and contest.frozen_last_minutes > 0
     )
+    freeze_reached = freeze_configured and generated_at >= contest.frozen_time
+    official_freeze_available = freeze_reached
     format_config = contest.format.config or {}
     first_solves, total_ac = contest.format.get_first_solves_and_total_ac(
         problems,
@@ -246,6 +251,12 @@ def build_resolver_payload(contest):
             'rank_display_options': contest.rank_display_options,
             'points_precision': contest.points_precision,
             'frozen_last_minutes': contest.frozen_last_minutes,
+            'generated_at': generated_at.isoformat(),
+            'contest_end_time': contest.end_time.isoformat(),
+            'contest_ended_at_generation': contest.end_time < generated_at,
+            'freeze_configured': freeze_configured,
+            'freeze_reached': freeze_reached,
+            'official_freeze_baseline_available': official_freeze_available,
             'official_freeze_available': official_freeze_available,
         },
         'problems': [
