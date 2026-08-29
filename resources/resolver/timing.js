@@ -138,7 +138,7 @@ export class SingleStepTiming {
   }
 }
 
-export function usesSingleStepTiming(displayedRank, singleStepStartRank) {
+export function usesSingleStepTiming(currentPosition, singleStepStartRank) {
   const threshold = Number.parseInt(singleStepStartRank, 10);
-  return Number.isFinite(threshold) && threshold > 0 && displayedRank <= threshold;
+  return Number.isFinite(threshold) && threshold > 0 && currentPosition <= threshold;
 }

@@ -295,7 +295,7 @@ test("official ICPC event delays and playback speed scaling are exact", () => {
   assert.equal(effectiveDelay(2250, 0.5), 4500);
 });
 
-test("singleStepStartRank is one-based: rank 7 auto, rank 6 single-step", () => {
+test("singleStepStartRank is one-based by physical position", () => {
   assert.equal(usesSingleStepTiming(7, 6), false);
   assert.equal(usesSingleStepTiming(6, 6), true);
 });
@@ -309,7 +309,7 @@ test("SingleStepTiming uses hard pauses after team, problem, and result but not 
   const planner = new ResolutionPlanner({
     payload: defaultPayload,
     targetSelector: (currentSession) => policy.select(currentSession),
-    singleStepStartRank: 1,
+    singleStepStartRank: 3,
     awardPlaces: 0,
   });
   const plan = planner.planNext(session);
@@ -358,6 +358,61 @@ test("continuous Play starts in single-step immediately when five contestants ar
   const result = await player.playToNextPause(false);
   assert.equal(result.pause.kind, "single-step-result");
   assert.equal(session.getHistoryCursor(), 1);
+});
+
+test("Beginning tied ranks stay automatic until row sweep physically reaches Top 3", async () => {
+  const payload = rankedIcpcPayload(8);
+  const session = new ResolverSession(payload, { baseline: "beginning", tieOrder: "source" });
+  const policy = new RowSweepPolicy(payload.problems.map((entry) => entry.id));
+  const planner = new ResolutionPlanner({
+    payload,
+    targetSelector: (currentSession) => policy.select(currentSession),
+    singleStepStartRank: 3,
+    awardPlaces: 0,
+    hardPauses: { award: false, firstSolve: false },
+  });
+  const player = new ResolutionPlayer({ session, planner, wait: async () => {} });
+
+  assert.equal(
+    session.getStandings().every((standing) => standing.rank === 1),
+    true,
+  );
+  const first = planner.projectNext(session);
+  assert.equal(first.currentPosition, 8);
+  assert.equal(first.currentRank, 1);
+  assert.equal(first.isSingleStep, false, "displayed tied rank must not activate Top 3");
+
+  const boundary = await player.playContinuous(false);
+  assert.equal(boundary.pause.kind, "single-step-team");
+  assert.equal(player.getState().projection.currentPosition <= 3, true);
+  assert.equal(session.getHistoryCursor() > 0, true, "bottom rows resolved automatically first");
+});
+
+test("Official Freeze physical Top N includes exact ties and keeps a disqualified bottom row automatic", async () => {
+  const payload = rankedIcpcPayload(5);
+  payload.contestants.forEach((entry) => {
+    entry.frozen = { score: 1, cumtime: 10, tiebreaker: 10 };
+  });
+  payload.contestants.at(-1).is_disqualified = true;
+  const session = new ResolverSession(payload, {
+    baseline: "official-freeze",
+    tieOrder: "source",
+  });
+  const policy = new RowSweepPolicy(payload.problems.map((entry) => entry.id));
+  const planner = new ResolutionPlanner({
+    payload,
+    targetSelector: (currentSession) => policy.select(currentSession),
+    singleStepStartRank: 3,
+    hardPauses: { award: false, firstSolve: false },
+  });
+  const player = new ResolutionPlayer({ session, planner, wait: async () => {} });
+
+  const first = planner.projectNext(session);
+  assert.equal(first.currentPosition, 5);
+  assert.equal(first.isSingleStep, false);
+  const boundary = await player.playContinuous(false);
+  assert.equal(boundary.pause.kind, "single-step-team");
+  assert.equal(player.getState().projection.currentPosition <= 3, true);
 });
 
 test("award-zone start pauses once when row sweep reaches Top 6 without a rank crossing", async () => {
@@ -447,7 +502,7 @@ test("Rewind clears a selection-only SingleStep pause before any reveal", async 
   const planner = new ResolutionPlanner({
     payload: defaultPayload,
     targetSelector: (currentSession) => policy.select(currentSession),
-    singleStepStartRank: 1,
+    singleStepStartRank: 3,
     awardPlaces: 0,
   });
   const player = new ResolutionPlayer({ session, planner });

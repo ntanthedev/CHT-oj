@@ -375,6 +375,19 @@ export class ResolutionPlayer {
     }
     this.planner = planner;
     this.playbackSpeed = speed;
+    if (this._checkpointIndex < this._checkpoints.length - 1) {
+      this._checkpoints.splice(this._checkpointIndex + 1);
+    }
+    const currentHistoryCursor = this.session.getHistoryCursor();
+    const replaceCurrentCheckpoint =
+      this._checkpoints[this._checkpointIndex]?.historyCursor === currentHistoryCursor;
+    this._checkpoints.forEach((checkpoint) => {
+      checkpoint.plan = null;
+      checkpoint.cursor = 0;
+      if (resetAwardZoneMilestone) {
+        checkpoint.milestones = { awardZoneEntered: false };
+      }
+    });
     this._plan = null;
     this._cursor = 0;
     this.presentation = initialPresentation();
@@ -384,8 +397,13 @@ export class ResolutionPlayer {
     if (resetAwardZoneMilestone) {
       this._milestones = { awardZoneEntered: false };
     }
-    this._checkpoints = [this._makeCheckpoint("settings", reason)];
-    this._checkpointIndex = 0;
+    const settingsCheckpoint = this._makeCheckpoint("settings", reason);
+    if (replaceCurrentCheckpoint) {
+      this._checkpoints[this._checkpointIndex] = settingsCheckpoint;
+    } else {
+      this._checkpoints.push(settingsCheckpoint);
+      this._checkpointIndex = this._checkpoints.length - 1;
+    }
     this._atCheckpoint = true;
     await this.onRestore(this.getState());
     this._notify();

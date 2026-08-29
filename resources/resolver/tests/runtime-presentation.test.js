@@ -19,6 +19,7 @@ function semanticSnapshot(session) {
     state: session.getState(),
     standings: session.getStandings(),
     historyCursor: session.getHistoryCursor(),
+    historyLength: session.getHistoryLength(),
     resolvableCount: session.getResolvableCount(),
   };
 }
@@ -34,7 +35,7 @@ function plannerFor(payload, session, options = {}) {
   });
 }
 
-test("settings Cancel and runtime Apply preserve exact semantic Resolver state", async () => {
+test("settings Cancel preserves exact semantic Resolver state", () => {
   const session = new ResolverSession(defaultPayload, { baseline: "beginning", seed: "settings" });
   session.revealCell(11, 101);
   session.revealCell(22, 101);
@@ -50,12 +51,26 @@ test("settings Cancel and runtime Apply preserve exact semantic Resolver state",
   manager.cancelEdit();
   assert.deepEqual(semanticSnapshot(session), before);
   assert.deepEqual(manager.getActive(), normalizeResolverSettings(DEFAULT_RESOLVER_SETTINGS, 3));
+});
+
+test("runtime Apply preserves checkpoints and replans future playback with new settings", async () => {
+  const session = new ResolverSession(defaultPayload, {
+    baseline: "beginning",
+    seed: "settings-apply",
+    tieOrder: "source",
+  });
+  const manager = new ResolverSettingsManager(DEFAULT_RESOLVER_SETTINGS, 3);
 
   const player = new ResolutionPlayer({
     session,
     planner: plannerFor(defaultPayload, session),
     wait: async () => {},
   });
+  await player.fastForwardToNextPause();
+  await player.fastForwardToNextPause();
+  await player.fastForwardToNextPause();
+  const before = semanticSnapshot(session);
+  const checkpointsBefore = player.getState().checkpointCount;
   manager.beginEdit();
   const applied = manager.commitDraft({
     ...manager.getDraft(),
@@ -63,7 +78,7 @@ test("settings Cancel and runtime Apply preserve exact semantic Resolver state",
     revealHighlightDurationMs: 750,
     autoScrollAutomatic: false,
     autoScrollManual: true,
-    singleStepStartRank: 2,
+    singleStepStartRank: 3,
     awardPlaces: 1,
     pauseAward: true,
     pauseFirstSolve: true,
@@ -83,7 +98,59 @@ test("settings Cancel and runtime Apply preserve exact semantic Resolver state",
   assert.equal(applied.revealHighlightDurationMs, 750);
   assert.equal(applied.autoScrollAutomatic, false);
   assert.equal(applied.autoScrollManual, true);
-  assert.equal(player.getState().checkpointCount, 1, "stale presentation checkpoints are replaced");
+  assert.equal(player.getState().checkpointCount, checkpointsBefore);
+  assert.equal(player.getState().checkpointIndex, checkpointsBefore - 1);
+
+  await player.rewindToPreviousPause();
+  assert.equal(
+    session.getHistoryCursor(),
+    before.historyCursor - 1,
+    "Back reaches a pre-Apply reveal",
+  );
+  const replanned = await player.playContinuous(false);
+  assert.equal(replanned.pause.kind, "single-step-team", "new Top N timing is used after rewind");
+  assert.equal(session.getHistoryCursor(), before.historyCursor - 1);
+  assert.equal(player.getState().timing, "single-step");
+
+  await player.playToNextPause(false);
+  await player.playToNextPause(false);
+  assert.equal(session.getHistoryCursor(), before.historyCursor);
+  assert.deepEqual(
+    semanticSnapshot(session),
+    before,
+    "semantic redo remains exact under the new planner",
+  );
+});
+
+test("runtime Apply after rewind drops stale future checkpoints but preserves semantic redo", async () => {
+  const session = new ResolverSession(defaultPayload, {
+    baseline: "beginning",
+    tieOrder: "source",
+  });
+  const player = new ResolutionPlayer({
+    session,
+    planner: plannerFor(defaultPayload, session),
+    wait: async () => {},
+  });
+  await player.fastForwardToNextPause();
+  await player.fastForwardToNextPause();
+  await player.fastForwardToNextPause();
+  const thirdReveal = session.getState();
+  await player.rewindToPreviousPause();
+  assert.equal(session.getHistoryCursor(), 2);
+  assert.equal(session.getHistoryLength(), 3);
+
+  await player.reconfigure({
+    planner: plannerFor(defaultPayload, session, { singleStepStartRank: 3 }),
+  });
+  assert.equal(player.getState().checkpointCount, 3, "future presentation checkpoints are removed");
+  assert.equal(session.getHistoryLength(), 3, "semantic redo history is preserved");
+
+  await player.playContinuous(false);
+  await player.playToNextPause(false);
+  await player.playToNextPause(false);
+  assert.equal(session.getHistoryCursor(), 3);
+  assert.deepEqual(session.getState(), thirdReveal);
 });
 
 test("baseline selection is distinguishable from runtime-safe settings and requires explicit restart", () => {

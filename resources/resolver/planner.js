@@ -20,10 +20,6 @@ export function classifyResolutionResult(transition) {
   return RESOLUTION_STEP_TYPES.RESULT_FAILED;
 }
 
-function crossingBoundary(beforeRank, afterRank, boundary) {
-  return boundary > 0 && beforeRank > boundary && afterRank <= boundary;
-}
-
 export class ResolutionPlanner {
   constructor({
     payload,
@@ -64,18 +60,11 @@ export class ResolutionPlanner {
     const problem = this.problems.get(normalizeId(target.problemId));
     const { effects } = projection;
     const resultType = classifyResolutionResult(projection);
-    const isSingleStep = usesSingleStepTiming(effects.rankBefore, this.singleStepStartRank);
-    const entersSingleStepZone = crossingBoundary(
-      effects.rankBefore,
-      effects.rankAfter,
-      this.singleStepStartRank,
-    );
-    const entersAwardZone = crossingBoundary(
-      effects.rankBefore,
-      effects.rankAfter,
-      this.awardPlaces,
-    );
+    const isSingleStep = usesSingleStepTiming(effects.positionBefore, this.singleStepStartRank);
+    const singleStepBoundary = Math.min(this.singleStepStartRank, this.payload.contestants.length);
+    const entersSingleStepZone = isSingleStep && effects.positionBefore === singleStepBoundary;
     const isAwardZoneTarget = this.awardPlaces > 0 && effects.positionBefore <= this.awardPlaces;
+    const entersAwardZone = isAwardZoneTarget && planningContext.awardZoneEntered !== true;
     const awardZoneStart =
       this.hardPauses.award && isAwardZoneTarget && planningContext.awardZoneEntered !== true;
 
