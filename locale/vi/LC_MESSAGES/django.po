@@ -7545,6 +7545,10 @@ msgstr "Ít"
 msgid "More"
 msgstr "Nhiều"
 
+#: templates/contest/spotlight-ranking.html
+msgid "More actions"
+msgstr "Thêm thao tác"
+
 #: templates/user/user-about.html:122
 msgid "Rating history"
 msgstr "Lịch sử rating"

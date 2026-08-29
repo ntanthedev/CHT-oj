@@ -242,7 +242,10 @@ export class ResolverPage {
       }
     });
     this.nodes.fullscreen.addEventListener("click", () => void this._toggleFullscreen());
-    this.nodes.changeSetup.addEventListener("click", () => this._showSetup());
+    this.nodes.changeSetup.addEventListener("click", () => {
+      this.nodes.more.open = false;
+      this._showSetup();
+    });
     this.nodes.tableBody.addEventListener("click", (event) => {
       const action = event.target.closest("[data-resolver-action]");
       if (!action || event.target.closest("[data-resolver-secondary-link]")) {
@@ -525,6 +528,7 @@ export class ResolverPage {
     this.nodes.autoplayField.hidden = editing;
     this.nodes.restartWarning.hidden = true;
     this.nodes.restartPresentation.hidden = true;
+    this.nodes.setupSubmit.disabled = false;
     this.nodes.workspace.hidden = true;
     this.nodes.setup.hidden = false;
     this.nodes.baseline.focus();

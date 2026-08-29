@@ -92,6 +92,19 @@ test("Default beginning baseline handles partial and zero scores without problem
     initial.standings.every((standing) => standing.rank === 1),
     true,
   );
+  assert.equal(
+    initial.standings.every(
+      (standing) => standing.score === 0 && standing.cumtime === 0 && standing.tiebreaker === 0,
+    ),
+    true,
+  );
+  assert.notDeepEqual(
+    initial.standings.map((standing) => standing.contestantId),
+    [...defaultPayload.contestants]
+      .sort((left, right) => left.final_order - right.final_order)
+      .map((contestant) => contestant.participation_id),
+    "Beginning must use seeded tie order instead of exposing final physical order",
+  );
   assert.equal(session.getResolvableCells().length, 5);
 
   session.revealCell(11, 101);

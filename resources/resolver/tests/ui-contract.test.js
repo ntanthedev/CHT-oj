@@ -38,6 +38,40 @@ test("presenter setup keeps engine details advanced and the HUD hidden by defaul
   assert.equal(template.includes("data-resolver-preset"), false);
 });
 
+test("presenter toolbar exposes common actions and uses an accessible icon-only overflow", async () => {
+  const template = await readFile(
+    new URL("../../../templates/contest/spotlight-ranking.html", import.meta.url),
+    "utf8",
+  );
+  const primaryGroup = template.match(
+    /<div class="resolver-toolbar__group">([\s\S]*?)<\/div>\s*<div class="resolver-toolbar__group">/,
+  )?.[1];
+  const overflowPanel = template.match(
+    /<div class="resolver-toolbar__more-panel">([\s\S]*?)<\/div>/,
+  )?.[1];
+
+  assert.ok(primaryGroup);
+  assert.match(primaryGroup, /id="resolver-play"/);
+  assert.match(primaryGroup, /id="resolver-back"/);
+  assert.match(primaryGroup, /id="resolver-next"/);
+  assert.match(primaryGroup, /id="resolver-reset"/);
+  assert.match(primaryGroup, /id="resolver-change-setup"/);
+  assert.match(primaryGroup, /id="resolver-fullscreen"/);
+  assert.ok(overflowPanel);
+  assert.match(overflowPanel, /id="resolver-forward"/);
+  assert.match(overflowPanel, /id="resolver-replay"/);
+  assert.match(overflowPanel, /id="resolver-toggle-hud"/);
+  assert.match(overflowPanel, /id="resolver-help"/);
+  assert.doesNotMatch(overflowPanel, /id="resolver-next"|id="resolver-change-setup"/);
+  assert.match(template, /aria-label="\{\{ _\('More actions'\) \}\}"/);
+  assert.match(template, /title="\{\{ _\('More actions'\) \}\}"/);
+  assert.match(template, /<span aria-hidden="true">⋯<\/span>/);
+  assert.doesNotMatch(template, /\{\{ _\('More'\) \}\}/);
+
+  const page = await readFile(new URL("../page.js", import.meta.url), "utf8");
+  assert.match(page, /this\.nodes\.setupSubmit\.disabled = false/);
+});
+
 test("dynamic Resolver rendering does not inject translated or user data as HTML", async () => {
   const [page, bootstrap] = await Promise.all([
     readFile(new URL("../page.js", import.meta.url), "utf8"),

@@ -242,6 +242,12 @@
   display: none;
 }
 
+.resolver-toolbar__more-trigger {
+  min-height: 2.1em;
+  font-size: 1.15em;
+  line-height: 1;
+}
+
 .resolver-toolbar__more-panel {
   position: absolute;
   z-index: 20;

@@ -78,12 +78,22 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
           <fieldset class="resolver-field resolver-field--beats">
             <legend>{{ _('Follow position') }}</legend>
             <label
-              ><input id="resolver-auto-scroll-automatic" name="auto_scroll_automatic" type="checkbox"
-              checked /> {{ _('Auto-scroll during automatic reveal') }}</label
+              ><input
+                id="resolver-auto-scroll-automatic"
+                name="auto_scroll_automatic"
+                type="checkbox"
+                checked
+              />
+              {{ _('Auto-scroll during automatic reveal') }}</label
             >
             <label
-              ><input id="resolver-auto-scroll-manual" name="auto_scroll_manual" type="checkbox" checked
-              /> {{ _('Auto-scroll during manual reveal') }}</label
+              ><input
+                id="resolver-auto-scroll-manual"
+                name="auto_scroll_manual"
+                type="checkbox"
+                checked
+              />
+              {{ _('Auto-scroll during manual reveal') }}</label
             >
           </fieldset>
           <div class="resolver-field">
@@ -104,18 +114,12 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
           </div>
           <fieldset class="resolver-field resolver-field--beats">
             <legend>{{ _('Autoplay stops') }}</legend>
-            <label
-              ><input name="pause_award" type="checkbox" /> {{ _('Pause when ceremony reaches the award zone')
-              }}</label
-            >
-            <label
-              ><input name="pause_first_solve" type="checkbox" /> {{ _('Pause after revealing First Solve')
-              }}</label
-            >
-            <span class="resolver-field__help"
-              >{{ _('First Solve is the actual earliest accepted solve and does not depend on presentation order.')
-              }}</span
-            >
+            <!-- prettier-ignore -->
+            <label><input name="pause_award" type="checkbox" /> {{ _('Pause when ceremony reaches the award zone') }}</label>
+            <!-- prettier-ignore -->
+            <label><input name="pause_first_solve" type="checkbox" /> {{ _('Pause after revealing First Solve') }}</label>
+            <!-- prettier-ignore -->
+            <span class="resolver-field__help">{{ _('First Solve is the actual earliest accepted solve and does not depend on presentation order.') }}</span>
           </fieldset>
         </div>
       </details>
@@ -126,10 +130,19 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
         <button id="resolver-setup-cancel" type="button" class="button resolver-button" hidden>
           {{ _('Cancel') }}
         </button>
-        <button id="resolver-restart-presentation" type="button" class="button resolver-button" hidden>
+        <button
+          id="resolver-restart-presentation"
+          type="button"
+          class="button resolver-button"
+          hidden
+        >
           <i class="fa fa-refresh"></i> {{ _('Restart presentation') }}
         </button>
-        <button id="resolver-setup-submit" type="submit" class="button resolver-button resolver-button--primary">
+        <button
+          id="resolver-setup-submit"
+          type="submit"
+          class="button resolver-button resolver-button--primary"
+        >
           <i class="fa fa-play"></i>
           <span id="resolver-setup-submit-label">{{ _('Start Resolver') }}</span>
         </button>
@@ -140,7 +153,11 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
   <section id="resolver-workspace" aria-label="{{ _('Resolver standings') }}" hidden>
     <div class="resolver-toolbar" role="group" aria-label="{{ _('Resolver controls') }}">
       <div class="resolver-toolbar__group">
-        <button id="resolver-play" type="button" class="inline-button resolver-button resolver-button--primary">
+        <button
+          id="resolver-play"
+          type="button"
+          class="inline-button resolver-button resolver-button--primary"
+        >
           <i class="fa fa-play"></i> {{ _('Play') }}
         </button>
         <button
@@ -165,8 +182,14 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
         <button id="resolver-back" type="button" class="inline-button resolver-button">
           <i class="fa fa-step-backward"></i> {{ _('Back') }}
         </button>
+        <button id="resolver-next" type="button" class="inline-button resolver-button">
+          {{ _('Next') }}
+        </button>
         <button id="resolver-reset" type="button" class="inline-button resolver-button">
           <i class="fa fa-undo"></i> {{ _('Reset') }}
+        </button>
+        <button id="resolver-change-setup" type="button" class="inline-button resolver-button">
+          <i class="fa fa-cog"></i> {{ _('Setup') }}
         </button>
         <button id="resolver-fullscreen" type="button" class="inline-button resolver-button">
           <i class="fa fa-expand"></i> {{ _('Fullscreen') }}
@@ -175,11 +198,14 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
       <div class="resolver-toolbar__group">
         <span id="resolver-progress" class="resolver-progress"></span>
         <details class="resolver-toolbar__more">
-          <summary class="inline-button resolver-button">{{ _('More') }}</summary>
+          <summary
+            class="inline-button resolver-button resolver-button--compact resolver-toolbar__more-trigger"
+            aria-label="{{ _('More actions') }}"
+            title="{{ _('More actions') }}"
+          >
+            <span aria-hidden="true">⋯</span>
+          </summary>
           <div class="resolver-toolbar__more-panel">
-            <button id="resolver-next" type="button" class="inline-button resolver-button">
-              {{ _('Next') }}
-            </button>
             <button id="resolver-forward" type="button" class="inline-button resolver-button">
               {{ _('Fast forward') }}
             </button>
@@ -191,9 +217,6 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
             </button>
             <button id="resolver-help" type="button" class="inline-button resolver-button">
               {{ _('Shortcuts') }}
-            </button>
-            <button id="resolver-change-setup" type="button" class="inline-button resolver-button">
-              {{ _('Setup') }}
             </button>
           </div>
         </details>

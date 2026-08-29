@@ -407,3 +407,5 @@ class ResolverPayloadTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Bắt đầu trình diễn')
         self.assertContains(response, 'Trình diễn kết quả')
+        self.assertContains(response, 'aria-label="Thêm thao tác"')
+        self.assertNotContains(response, '>Nhiều<')
