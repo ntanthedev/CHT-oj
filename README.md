@@ -35,6 +35,18 @@ Refer to the install documentation [here](https://vnoi-admin.github.io/vnoj-docs
     }
   ```
 
+### Local development static assets
+
+After configuring `dmoj/local_settings.py`, initialize the pinned static-assets submodule and prepare the configured `STATIC_ROOT` before starting Django:
+
+```bash
+git submodule update --init --recursive
+python manage.py prepare_dev_static
+python manage.py runserver
+```
+
+`prepare_dev_static` runs both `collectstatic` and `compilejsi18n`. Run it again whenever `STATIC_ROOT` is cleared or static files or JavaScript translations change. Generated output remains outside Git in the configured `STATIC_ROOT`.
+
 ## Contributing ![PR's Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat)
 
 Take a look at [our contribution guideline](contributing.md).
