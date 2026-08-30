@@ -52,7 +52,7 @@ function payload(
     ),
   );
   return {
-    schema_version: 1,
+    schema_version: 2,
     contest: {
       id: 1,
       key: `resolver-${format}`,

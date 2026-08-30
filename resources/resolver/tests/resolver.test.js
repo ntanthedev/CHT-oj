@@ -82,6 +82,20 @@ function assertFinalParity(session, payload, expectedRanks, expectedOrder) {
   );
 }
 
+test("Resolver requires the schema version 2 payload contract", () => {
+  const schemaVersionOne = { ...defaultPayload, schema_version: 1 };
+  const futureSchemaVersion = { ...defaultPayload, schema_version: 3 };
+
+  assert.throws(
+    () => new ResolverSession(schemaVersionOne, { baseline: "beginning" }),
+    /Invalid Resolver schema version 2 payload/,
+  );
+  assert.throws(
+    () => new ResolverSession(futureSchemaVersion, { baseline: "beginning" }),
+    /Invalid Resolver schema version 2 payload/,
+  );
+});
+
 test("Default beginning baseline handles partial and zero scores without problem indexes", () => {
   const session = new ResolverSession(defaultPayload, {
     baseline: "beginning",

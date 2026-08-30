@@ -270,7 +270,7 @@ def build_resolver_payload(contest):
     )
 
     return {
-        'schema_version': 1,
+        'schema_version': 2,
         'contest': {
             'id': contest.id,
             'key': contest.key,

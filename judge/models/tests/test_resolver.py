@@ -155,7 +155,7 @@ class ResolverPayloadTestCase(TestCase):
     def test_payload_preserves_problem_order_labels_live_scope_and_icpc_fields(self):
         payload = build_resolver_payload(self.fresh_contest())
 
-        self.assertEqual(payload['schema_version'], 1)
+        self.assertEqual(payload['schema_version'], 2)
         self.assertEqual(payload['contest']['format'], 'icpc')
         self.assertEqual(payload['contest']['format_config'], {'penalty': 17})
         self.assertEqual(payload['contest']['rank_display_options'], self.contest.rank_display_options)

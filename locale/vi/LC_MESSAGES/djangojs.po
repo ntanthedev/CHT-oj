@@ -41,8 +41,8 @@ msgid "Resolver baseline \"%(baseline)s\" is not available for this contest."
 msgstr "Mốc bắt đầu \"%(baseline)s\" không khả dụng cho cuộc thi này."
 
 #: resources/resolver/core.js:50
-msgid "Invalid Resolver schema version 1 payload."
-msgstr "Dữ liệu trình diễn phiên bản 1 không hợp lệ."
+msgid "Invalid Resolver schema version 2 payload."
+msgstr "Dữ liệu trình diễn phiên bản 2 không hợp lệ."
 
 #: resources/resolver/core.js:118
 msgid "Unknown Resolver tie order \"%(order)s\"."
