@@ -1,9 +1,9 @@
 from django.conf import settings
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 from django.utils import timezone
 
 from judge.jinja2.gravatar import fallback as gravatar_fallback, gravatar
-from judge.models import ContestParticipation, Organization
+from judge.models import ContestParticipation, ContestSubmission, Organization, Submission
 
 
 SUPPORTED_RESOLVER_FORMATS = frozenset(('default', 'icpc', 'vnoj'))
@@ -184,6 +184,35 @@ def build_resolver_payload(contest):
         raise ResolverUnsupportedFormat(format_name)
 
     generated_at = timezone.now()
+    contest_ended_at_generation = contest.end_time < generated_at
+
+    relevant_submissions = ContestSubmission.objects.filter(
+        participation__contest=contest,
+        participation__virtual=ContestParticipation.LIVE,
+    )
+    settlement = relevant_submissions.aggregate(
+        in_progress_submission_count=Count(
+            'id',
+            filter=Q(submission__status__in=Submission.IN_PROGRESS_GRADING_STATUS),
+        ),
+        pretested_submission_count=Count(
+            'id',
+            filter=Q(submission__is_pretested=True),
+        ),
+    )
+    in_progress_submission_count = settlement['in_progress_submission_count']
+    pretested_submission_count = settlement['pretested_submission_count']
+    results_settled_at_generation = (
+        contest_ended_at_generation and
+        in_progress_submission_count == 0 and
+        pretested_submission_count == 0
+    )
+    if not contest_ended_at_generation:
+        snapshot_state = 'preview'
+    elif results_settled_at_generation:
+        snapshot_state = 'final'
+    else:
+        snapshot_state = 'unsettled'
 
     problems = list(
         contest.contest_problems.select_related('problem').defer('problem__description').order_by('order'),
@@ -253,7 +282,11 @@ def build_resolver_payload(contest):
             'frozen_last_minutes': contest.frozen_last_minutes,
             'generated_at': generated_at.isoformat(),
             'contest_end_time': contest.end_time.isoformat(),
-            'contest_ended_at_generation': contest.end_time < generated_at,
+            'contest_ended_at_generation': contest_ended_at_generation,
+            'snapshot_state': snapshot_state,
+            'in_progress_submission_count': in_progress_submission_count,
+            'pretested_submission_count': pretested_submission_count,
+            'results_settled_at_generation': results_settled_at_generation,
             'freeze_configured': freeze_configured,
             'freeze_reached': freeze_reached,
             'official_freeze_baseline_available': official_freeze_available,

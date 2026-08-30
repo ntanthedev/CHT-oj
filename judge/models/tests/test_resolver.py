@@ -11,7 +11,7 @@ from django.urls import resolve, reverse
 from django.utils import timezone
 
 from judge.admin.contest import ContestAdmin
-from judge.models import Contest, ContestParticipation
+from judge.models import Contest, ContestParticipation, ContestSubmission, Language, Submission
 from judge.models.contest import RankDisplayOptions
 from judge.models.tests.util import create_contest_participation, create_contest_problem, create_organization, \
     create_problem, create_user
@@ -107,13 +107,13 @@ class ResolverPayloadTestCase(TestCase):
                 },
             },
         )
-        create_contest_participation(
+        cls.virtual = create_contest_participation(
             contest=cls.contest,
             user=cls.virtual_user.profile,
             virtual=1,
             score=1,
         )
-        create_contest_participation(
+        cls.spectating = create_contest_participation(
             contest=cls.contest,
             user=cls.spectator.profile,
             virtual=ContestParticipation.SPECTATE,
@@ -135,6 +135,23 @@ class ResolverPayloadTestCase(TestCase):
         view.object = contest or self.fresh_contest()
         return view
 
+    def create_submission(self, participation=None, status='D', is_pretested=False):
+        participation = participation or self.live
+        submission = Submission.objects.create(
+            user=participation.user,
+            problem=self.earlier_problem.problem,
+            language=Language.get_python3(),
+            status=status,
+            result='WA' if status == 'D' else None,
+            is_pretested=is_pretested,
+        )
+        ContestSubmission.objects.create(
+            submission=submission,
+            problem=self.earlier_problem,
+            participation=participation,
+        )
+        return submission
+
     def test_payload_preserves_problem_order_labels_live_scope_and_icpc_fields(self):
         payload = build_resolver_payload(self.fresh_contest())
 
@@ -145,6 +162,10 @@ class ResolverPayloadTestCase(TestCase):
         self.assertEqual(payload['contest']['contest_end_time'], self.contest.end_time.isoformat())
         self.assertTrue(timezone.is_aware(datetime.fromisoformat(payload['contest']['generated_at'])))
         self.assertTrue(payload['contest']['contest_ended_at_generation'])
+        self.assertEqual(payload['contest']['snapshot_state'], 'final')
+        self.assertEqual(payload['contest']['in_progress_submission_count'], 0)
+        self.assertEqual(payload['contest']['pretested_submission_count'], 0)
+        self.assertTrue(payload['contest']['results_settled_at_generation'])
         self.assertTrue(payload['contest']['freeze_configured'])
         self.assertTrue(payload['contest']['freeze_reached'])
         self.assertTrue(payload['contest']['official_freeze_baseline_available'])
@@ -222,6 +243,8 @@ class ResolverPayloadTestCase(TestCase):
         ))
 
         self.assertFalse(payload['contest']['contest_ended_at_generation'])
+        self.assertEqual(payload['contest']['snapshot_state'], 'preview')
+        self.assertFalse(payload['contest']['results_settled_at_generation'])
         self.assertTrue(payload['contest']['freeze_configured'])
         self.assertFalse(payload['contest']['freeze_reached'])
         self.assertFalse(payload['contest']['official_freeze_baseline_available'])
@@ -230,6 +253,38 @@ class ResolverPayloadTestCase(TestCase):
         self.assertIsNone(
             payload['contestants'][0]['problems'][str(self.earlier_problem.id)]['frozen'],
         )
+
+    def test_ended_contest_with_in_progress_live_submissions_is_unsettled(self):
+        for status in Submission.IN_PROGRESS_GRADING_STATUS:
+            self.create_submission(status=status)
+
+        payload = build_resolver_payload(self.fresh_contest())
+
+        self.assertEqual(payload['contest']['snapshot_state'], 'unsettled')
+        self.assertEqual(payload['contest']['in_progress_submission_count'], 3)
+        self.assertEqual(payload['contest']['pretested_submission_count'], 0)
+        self.assertFalse(payload['contest']['results_settled_at_generation'])
+
+    def test_ended_contest_with_pretested_live_submission_is_unsettled(self):
+        self.create_submission(is_pretested=True)
+
+        payload = build_resolver_payload(self.fresh_contest())
+
+        self.assertEqual(payload['contest']['snapshot_state'], 'unsettled')
+        self.assertEqual(payload['contest']['in_progress_submission_count'], 0)
+        self.assertEqual(payload['contest']['pretested_submission_count'], 1)
+        self.assertFalse(payload['contest']['results_settled_at_generation'])
+
+    def test_virtual_and_spectator_submissions_do_not_block_final_snapshot(self):
+        self.create_submission(participation=self.virtual, status='G')
+        self.create_submission(participation=self.spectating, is_pretested=True)
+
+        payload = build_resolver_payload(self.fresh_contest())
+
+        self.assertEqual(payload['contest']['snapshot_state'], 'final')
+        self.assertEqual(payload['contest']['in_progress_submission_count'], 0)
+        self.assertEqual(payload['contest']['pretested_submission_count'], 0)
+        self.assertTrue(payload['contest']['results_settled_at_generation'])
 
     def test_rank_display_options_are_serialized_without_an_independent_resolver_default(self):
         for option in (
@@ -259,9 +314,9 @@ class ResolverPayloadTestCase(TestCase):
         )
 
         contest = self.fresh_contest()
-        # Problems, final order, frozen order, rich participations, and one
-        # organization prefetch: this count must stay constant as users grow.
-        with self.assertNumQueries(5):
+        # Settlement, problems, final order, frozen order, rich participations,
+        # and one organization prefetch: this count must stay constant as users grow.
+        with self.assertNumQueries(6):
             payload = build_resolver_payload(contest)
         self.assertEqual(len(payload['contestants']), 2)
         self.assertTrue(all(len(contestant['organizations']) == 2 for contestant in payload['contestants']))
