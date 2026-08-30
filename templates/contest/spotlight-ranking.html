@@ -19,6 +19,24 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
   data-label-total-ac="{{ _('Total AC') }}"
 >
   <section
+    id="resolver-snapshot-warning"
+    class="alert resolver-snapshot-warning"
+    role="region"
+    aria-labelledby="resolver-snapshot-mode"
+  >
+    <p class="resolver-snapshot-warning__heading">
+      <strong id="resolver-snapshot-mode">{{ _('Snapshot status') }}</strong>
+    </p>
+    <p id="resolver-snapshot-message" aria-live="polite"></p>
+    <p class="resolver-snapshot-warning__generated">
+      <strong>{{ _('Snapshot generated') }}:</strong>
+      <time id="resolver-snapshot-generated"></time>
+    </p>
+    <button id="resolver-snapshot-refresh" type="button" class="button resolver-button">
+      <i class="fa fa-refresh"></i> {{ _('Refresh results') }}
+    </button>
+  </section>
+  <section
     id="resolver-setup"
     class="resolver-setup"
     aria-labelledby="resolver-setup-heading"
@@ -35,17 +53,6 @@ contest.format_name == 'icpc' %} {% include "contest/media-icpc-css.html" %} {% 
       <div class="resolver-start-summary">
         <strong>{{ _('Start information') }}</strong>
         <p id="resolver-freeze-note" class="resolver-setup__note"></p>
-      </div>
-      <div
-        id="resolver-snapshot-warning"
-        class="alert alert-warning resolver-snapshot-warning"
-        role="alert"
-        hidden
-      >
-        <p id="resolver-snapshot-message"></p>
-        <button id="resolver-snapshot-refresh" type="button" class="button resolver-button">
-          <i class="fa fa-refresh"></i> {{ _('Refresh results') }}
-        </button>
       </div>
       <div class="resolver-setup__primary">
         <div class="resolver-field">

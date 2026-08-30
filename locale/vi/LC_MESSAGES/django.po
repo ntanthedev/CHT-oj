@@ -8069,3 +8069,11 @@ msgstr "Quay về mốc trình diễn trước"
 #: templates/contest/spotlight-ranking.html
 msgid "Refresh results"
 msgstr "Tải lại kết quả"
+
+#: templates/contest/spotlight-ranking.html
+msgid "Snapshot status"
+msgstr "Trạng thái snapshot"
+
+#: templates/contest/spotlight-ranking.html
+msgid "Snapshot generated"
+msgstr "Snapshot được tạo"

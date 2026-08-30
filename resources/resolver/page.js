@@ -29,7 +29,7 @@ import {
   ResolverSettingsManager,
   normalizeResolverSettings,
 } from "./settings.js";
-import { getResolverSnapshotStatus } from "./snapshot.js";
+import { estimateServerNow, getResolverSnapshotStatus } from "./snapshot.js";
 
 function element(tagName, className = "", text = null) {
   const node = document.createElement(tagName);
@@ -101,6 +101,7 @@ export class ResolverPage {
     this.rowElements = new Map();
     this.totalRow = null;
     this.snapshotTimer = null;
+    this.snapshotMonotonicAtLoad = globalThis.performance?.now?.() ?? 0;
 
     this.nodes = {
       setup: root.querySelector("#resolver-setup"),
@@ -128,7 +129,9 @@ export class ResolverPage {
       pauseFirstSolve: root.querySelector('[name="pause_first_solve"]'),
       freezeNote: root.querySelector("#resolver-freeze-note"),
       snapshotWarning: root.querySelector("#resolver-snapshot-warning"),
+      snapshotMode: root.querySelector("#resolver-snapshot-mode"),
       snapshotMessage: root.querySelector("#resolver-snapshot-message"),
+      snapshotGenerated: root.querySelector("#resolver-snapshot-generated"),
       snapshotRefresh: root.querySelector("#resolver-snapshot-refresh"),
       workspace: root.querySelector("#resolver-workspace"),
       table: root.querySelector("#ranking-table"),
@@ -218,11 +221,27 @@ export class ResolverPage {
   }
 
   _snapshotStatus() {
-    return getResolverSnapshotStatus(this.payload.contest);
+    const estimatedServerNow = estimateServerNow(
+      this.payload.contest.generated_at,
+      this.snapshotMonotonicAtLoad,
+      globalThis.performance?.now?.() ?? this.snapshotMonotonicAtLoad,
+    );
+    return getResolverSnapshotStatus(this.payload.contest, estimatedServerNow);
   }
 
   _configureSnapshotSafety() {
     this.nodes.snapshotRefresh.addEventListener("click", () => window.location.reload());
+    const generatedAt = new Date(this.payload.contest.generated_at);
+    if (Number.isFinite(generatedAt.getTime())) {
+      this.nodes.snapshotGenerated.dateTime = this.payload.contest.generated_at;
+      this.nodes.snapshotGenerated.textContent = new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "medium",
+      }).format(generatedAt);
+    } else {
+      this.nodes.snapshotGenerated.removeAttribute("datetime");
+      this.nodes.snapshotGenerated.textContent = gettext("Unknown");
+    }
     this._renderSnapshotSafety();
     this._scheduleSnapshotExpiry();
   }
@@ -232,11 +251,8 @@ export class ResolverPage {
       globalThis.clearTimeout(this.snapshotTimer);
       this.snapshotTimer = null;
     }
-    if (this.session) {
-      return;
-    }
     const status = this._snapshotStatus();
-    if (status.kind !== "live" || status.remainingMs === null) {
+    if (status.kind !== "preview" || status.remainingMs === null || status.remainingMs === 0) {
       return;
     }
     const delay = Math.min(status.remainingMs + 50, 2_147_483_647);
@@ -248,24 +264,75 @@ export class ResolverPage {
   }
 
   _renderSnapshotSafety() {
-    if (this.session) {
-      this.nodes.snapshotWarning.hidden = true;
-      return;
-    }
     const status = this._snapshotStatus();
-    if (status.kind === "final" || status.kind === "unknown") {
-      this.nodes.snapshotWarning.hidden = true;
-      return;
-    }
-    this.nodes.snapshotWarning.hidden = false;
-    this.nodes.snapshotMessage.textContent = status.stale
-      ? gettext(
-          "This Resolver snapshot was created before the contest ended. Refresh to load the latest results.",
-        )
-      : gettext(
-          "This is a live Resolver snapshot created before the contest ended. Refresh after the contest ends before presenting final results.",
+    const inProgressCount = this.payload.contest.in_progress_submission_count;
+    const pretestedCount = this.payload.contest.pretested_submission_count;
+    const messages = [];
+    if (status.kind === "preview") {
+      this.nodes.snapshotMode.textContent = gettext("Preview");
+      messages.push(
+        status.contestMayHaveEnded
+          ? gettext(
+              "This preview snapshot cannot be used as final results. The contest may now have ended; refresh results to load a final snapshot.",
+            )
+          : gettext(
+              "This preview snapshot was created before the contest ended. It remains a preview until results are refreshed.",
+            ),
+      );
+    } else if (status.kind === "unsettled") {
+      this.nodes.snapshotMode.textContent = gettext("Final results are not ready yet");
+      if (inProgressCount > 0) {
+        messages.push(
+          ngettext(
+            "%(count)s submission is still being judged.",
+            "%(count)s submissions are still being judged.",
+            inProgressCount,
+          ),
         );
-    this.nodes.setupSubmit.disabled = status.stale;
+      }
+      if (pretestedCount > 0) {
+        messages.push(
+          ngettext(
+            "%(count)s submission still contains pretest-only results.",
+            "%(count)s submissions still contain pretest-only results.",
+            pretestedCount,
+          ),
+        );
+      }
+    } else if (status.kind === "final") {
+      this.nodes.snapshotMode.textContent = gettext("Final results ready");
+      messages.push(
+        gettext(
+          "This immutable snapshot is ready for the final ceremony. Refresh if submissions were rejudged after it was generated.",
+        ),
+      );
+    } else {
+      this.nodes.snapshotMode.textContent = gettext(
+        "Snapshot safety information could not be verified",
+      );
+      messages.push(
+        gettext("Refresh results before starting Resolver. This snapshot is blocked for safety."),
+      );
+    }
+    this.nodes.snapshotWarning.dataset.snapshotState = status.kind;
+    this.nodes.snapshotWarning.classList.toggle("alert-success", status.kind === "final");
+    this.nodes.snapshotWarning.classList.toggle("alert-warning", status.kind === "preview");
+    this.nodes.snapshotWarning.classList.toggle(
+      "alert-danger",
+      status.kind === "unsettled" || status.kind === "unknown",
+    );
+    this.nodes.snapshotMessage.textContent = messages.join(" ");
+    if (this.setupMode === "initial") {
+      this.nodes.setupSubmit.disabled = !status.canStart;
+      this.nodes.setupSubmitLabel.textContent =
+        status.kind === "preview" ? gettext("Start Preview") : gettext("Start Resolver");
+      this.nodes.setupIntro.textContent =
+        status.kind === "preview"
+          ? gettext("Rehearse the ceremony with a non-final snapshot.")
+          : gettext("Present the final standings with an automatic bottom-up ceremony.");
+    } else {
+      this.nodes.setupSubmit.disabled = false;
+    }
   }
 
   _bindEvents() {
@@ -470,7 +537,7 @@ export class ResolverPage {
   }
 
   _startFromSetup({ restarting = false } = {}) {
-    if (!this.session && this._snapshotStatus().stale) {
+    if (!this.session && !this._snapshotStatus().canStart) {
       this._renderSnapshotSafety();
       this.nodes.snapshotRefresh.focus();
       return null;
@@ -1125,6 +1192,8 @@ export class ResolverPage {
     });
     this.nodes.status.textContent = remaining
       ? this.statusMessage
+      : this._snapshotStatus().kind === "preview"
+      ? gettext("Resolver preview complete — snapshot standings reached.")
       : gettext("Resolver complete — final standings reached.");
     setIconLabel(
       this.nodes.play,
@@ -1191,12 +1260,14 @@ export class ResolverPage {
   }
 
   _renderHud(projection, historyCursor, historyLength, playerState, speed) {
+    const snapshotMode =
+      this._snapshotStatus().kind === "preview" ? gettext("PREVIEW") : gettext("FINAL");
     const baseline =
       this.session.baseline === "official-freeze" ? gettext("Freeze") : gettext("Beginning");
     const playback = playerState.running
       ? gettext("playing %(speed)s", { speed: speed.label })
       : gettext("paused %(speed)s", { speed: speed.label });
-    this.nodes.hudMode.textContent = `${baseline} · ${
+    this.nodes.hudMode.textContent = `${snapshotMode} · ${baseline} · ${
       POLICY_LABELS[this.policyName]
     } · ${playback}`;
     if (projection) {

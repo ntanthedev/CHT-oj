@@ -502,9 +502,75 @@ msgid "Official freeze is configured but has not started yet."
 msgstr "Official freeze đã được cấu hình nhưng chưa bắt đầu."
 
 #: resources/resolver/page.js
-msgid "This Resolver snapshot was created before the contest ended. Refresh to load the latest results."
-msgstr "Snapshot Resolver này được tạo trước khi kỳ thi kết thúc. Hãy tải lại để lấy kết quả mới nhất."
+msgid "Unknown"
+msgstr "Không xác định"
 
 #: resources/resolver/page.js
-msgid "This is a live Resolver snapshot created before the contest ended. Refresh after the contest ends before presenting final results."
-msgstr "Đây là snapshot Resolver trực tiếp được tạo trước khi kỳ thi kết thúc. Hãy tải lại sau khi kỳ thi kết thúc trước khi trình diễn kết quả cuối cùng."
+msgid "Preview"
+msgstr "Xem trước"
+
+#: resources/resolver/page.js
+msgid "This preview snapshot cannot be used as final results. The contest may now have ended; refresh results to load a final snapshot."
+msgstr "Snapshot xem trước này không thể dùng làm kết quả cuối cùng. Kỳ thi có thể đã kết thúc; hãy tải lại kết quả để lấy snapshot cuối cùng."
+
+#: resources/resolver/page.js
+msgid "This preview snapshot was created before the contest ended. It remains a preview until results are refreshed."
+msgstr "Snapshot xem trước này được tạo trước khi kỳ thi kết thúc. Nó vẫn là bản xem trước cho đến khi kết quả được tải lại."
+
+#: resources/resolver/page.js
+msgid "Final results are not ready yet"
+msgstr "Kết quả cuối cùng chưa sẵn sàng"
+
+#: resources/resolver/page.js
+msgid "%(count)s submission is still being judged."
+msgid_plural "%(count)s submissions are still being judged."
+msgstr[0] "%(count)s bài nộp vẫn đang được chấm."
+
+#: resources/resolver/page.js
+msgid "%(count)s submission still contains pretest-only results."
+msgid_plural "%(count)s submissions still contain pretest-only results."
+msgstr[0] "%(count)s bài nộp vẫn chỉ có kết quả pretest."
+
+#: resources/resolver/page.js
+msgid "Final results ready"
+msgstr "Kết quả cuối cùng đã sẵn sàng"
+
+#: resources/resolver/page.js
+msgid "This immutable snapshot is ready for the final ceremony. Refresh if submissions were rejudged after it was generated."
+msgstr "Snapshot bất biến này đã sẵn sàng cho phần trình diễn cuối cùng. Hãy tải lại nếu bài nộp được chấm lại sau khi snapshot được tạo."
+
+#: resources/resolver/page.js
+msgid "Snapshot safety information could not be verified"
+msgstr "Không thể xác minh thông tin an toàn của snapshot"
+
+#: resources/resolver/page.js
+msgid "Refresh results before starting Resolver. This snapshot is blocked for safety."
+msgstr "Hãy tải lại kết quả trước khi bắt đầu Resolver. Snapshot này bị chặn để bảo đảm an toàn."
+
+#: resources/resolver/page.js
+msgid "Start Preview"
+msgstr "Bắt đầu xem trước"
+
+#: resources/resolver/page.js
+msgid "Start Resolver"
+msgstr "Bắt đầu Resolver"
+
+#: resources/resolver/page.js
+msgid "Rehearse the ceremony with a non-final snapshot."
+msgstr "Diễn tập phần trình diễn bằng snapshot chưa phải kết quả cuối cùng."
+
+#: resources/resolver/page.js
+msgid "Present the final standings with an automatic bottom-up ceremony."
+msgstr "Trình diễn bảng xếp hạng cuối cùng bằng nghi thức tự động từ dưới lên."
+
+#: resources/resolver/page.js
+msgid "Resolver preview complete — snapshot standings reached."
+msgstr "Đã hoàn tất bản xem trước Resolver — đã đạt bảng xếp hạng của snapshot."
+
+#: resources/resolver/page.js
+msgid "PREVIEW"
+msgstr "XEM TRƯỚC"
+
+#: resources/resolver/page.js
+msgid "FINAL"
+msgstr "CUỐI CÙNG"

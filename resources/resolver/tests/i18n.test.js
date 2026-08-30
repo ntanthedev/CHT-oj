@@ -61,6 +61,11 @@ test("Vietnamese Resolver catalog contains essential dynamic controls", async ()
   );
   assert.match(
     catalog,
-    /msgid "This Resolver snapshot was created before the contest ended\. Refresh to load the latest results\."\s+msgstr "Snapshot Resolver này được tạo trước khi kỳ thi kết thúc\. Hãy tải lại để lấy kết quả mới nhất\."/,
+    /msgid "This preview snapshot cannot be used as final results\. The contest may now have ended; refresh results to load a final snapshot\."\s+msgstr "Snapshot xem trước này không thể dùng làm kết quả cuối cùng\. Kỳ thi có thể đã kết thúc; hãy tải lại kết quả để lấy snapshot cuối cùng\."/,
+  );
+  assert.match(catalog, /msgid "Final results ready"\s+msgstr "Kết quả cuối cùng đã sẵn sàng"/);
+  assert.match(
+    catalog,
+    /msgid "Snapshot safety information could not be verified"\s+msgstr "Không thể xác minh thông tin an toàn của snapshot"/,
   );
 });

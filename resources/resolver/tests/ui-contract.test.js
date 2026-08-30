@@ -36,7 +36,9 @@ test("presenter setup keeps engine details advanced and the HUD hidden by defaul
   assert.match(template, /id="resolver-auto-scroll-automatic"/);
   assert.match(template, /id="resolver-auto-scroll-manual"/);
   assert.equal(template.includes("data-resolver-preset"), false);
-  assert.match(template, /id="resolver-snapshot-warning"[^>]*role="alert"[^>]*hidden/);
+  assert.match(template, /id="resolver-snapshot-warning"[^>]*role="region"/);
+  assert.match(template, /id="resolver-snapshot-mode"/);
+  assert.match(template, /id="resolver-snapshot-generated"/);
   assert.match(template, /id="resolver-snapshot-refresh"[^>]*type="button"/);
 });
 
@@ -72,6 +74,9 @@ test("presenter toolbar exposes common actions and uses an accessible icon-only 
 
   const page = await readFile(new URL("../page.js", import.meta.url), "utf8");
   assert.match(page, /this\.nodes\.setupSubmit\.disabled = false/);
+  assert.match(page, /estimateServerNow/);
+  assert.doesNotMatch(page, /Date\.now\(\)/);
+  assert.doesNotMatch(page, /if \(this\.session\) \{\s*return;\s*\}/);
 });
 
 test("dynamic Resolver rendering does not inject translated or user data as HTML", async () => {
