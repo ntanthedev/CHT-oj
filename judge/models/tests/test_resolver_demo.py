@@ -52,21 +52,24 @@ class ResolverDemoCommandTestCase(TestCase):
             self.assertEqual(contest.format_name, blueprint.get('format_name', format_name))
             self.assertEqual(contest.user_count, len(expected_users))
             self.assertEqual(len(payload['contestants']), len(expected_users))
-            expected_order = list(
-                contest.users.filter(virtual=ContestParticipation.LIVE)
-                .annotate(submission_count=Count('submission'))
-                .order_by(
-                    'is_disqualified',
-                    '-score',
-                    'cumtime',
-                    'tiebreaker',
-                    '-submission_count',
+            ranking = {
+                participation.id: (
+                    participation.is_disqualified,
+                    -participation.score,
+                    participation.cumtime,
+                    participation.tiebreaker,
+                    -participation.submission_count,
                 )
-                .values_list('id', flat=True),
-            )
+                for participation in (
+                    contest.users.filter(virtual=ContestParticipation.LIVE)
+                    .annotate(submission_count=Count('submission'))
+                )
+            }
+            actual_order = [contestant['participation_id'] for contestant in payload['contestants']]
+            self.assertCountEqual(actual_order, ranking)
             self.assertEqual(
-                [contestant['participation_id'] for contestant in payload['contestants']],
-                expected_order,
+                [ranking[participation_id] for participation_id in actual_order],
+                sorted(ranking.values()),
             )
             self.assertEqual(
                 [contestant['final_order'] for contestant in payload['contestants']],
