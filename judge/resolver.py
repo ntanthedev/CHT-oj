@@ -1,8 +1,9 @@
 from django.conf import settings
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
+from django.utils import timezone
 
 from judge.jinja2.gravatar import fallback as gravatar_fallback, gravatar
-from judge.models import ContestParticipation, Organization
+from judge.models import ContestParticipation, Organization, Submission
 
 
 SUPPORTED_RESOLVER_FORMATS = frozenset(('default', 'icpc', 'vnoj'))
@@ -182,52 +183,57 @@ def build_resolver_payload(contest):
     if format_name not in SUPPORTED_RESOLVER_FORMATS:
         raise ResolverUnsupportedFormat(format_name)
 
-    problems = list(
-        contest.contest_problems.select_related('problem').defer('problem__description').order_by('order'),
-    )
-    ranking_queryset = contest.users.filter(virtual=ContestParticipation.LIVE).annotate(
-        submission_count=Count('submission'),
-    )
-    final_participation_ids = list(
-        ranking_queryset
-        .order_by('is_disqualified', '-score', 'cumtime', 'tiebreaker', '-submission_count')
-        .values_list('id', flat=True),
-    )
-    frozen_participation_ids = list(
-        ranking_queryset
-        .order_by(
-            'is_disqualified', '-frozen_score', 'frozen_cumtime', 'frozen_tiebreaker', '-submission_count',
-        )
-        .values_list('id', flat=True),
-    )
+    generated_at = timezone.now()
+    contest_ended_at_generation = contest.end_time < generated_at
 
-    participation_by_id = {
-        participation.id: participation
-        for participation in (
-            contest.users.filter(id__in=final_participation_ids)
-            .select_related('user__user', 'user__user_rank_logo', 'rating')
-            .defer('user__about', 'user__organizations__about')
-            .prefetch_related(Prefetch(
-                'user__organizations',
-                queryset=Organization.objects.filter(is_unlisted=False),
-            ))
-            .annotate(submission_count=Count('submission'))
-        )
-    }
-    participations = [participation_by_id[participation_id] for participation_id in final_participation_ids]
+    # Judging status, both ranking orders and all scoring cells must describe the same
+    # committed results, including on MariaDB's READ COMMITTED isolation level.
+    problems = list(contest.contest_problems.select_related('problem').defer('problem__description').order_by('order'))
+    participations = list(
+        contest.users.filter(virtual=ContestParticipation.LIVE)
+        .select_related('user__user', 'user__user_rank_logo', 'rating')
+        .defer('user__about')
+        .prefetch_related(Prefetch('user__organizations', queryset=Organization.objects.filter(is_unlisted=False)))
+        .annotate(
+            submission_count=Count('submission'),
+            grading_count=Count('submission', filter=Q(
+                submission__submission__status__in=Submission.IN_PROGRESS_GRADING_STATUS,
+            )),
+            pretest_count=Count('submission', filter=Q(submission__submission__is_pretested=True)),
+            failure_count=Count('submission', filter=(
+                Q(submission__submission__status='IE') |
+                Q(submission__submission__status='AB', submission__submission__rejudged_date__isnull=False)
+            )),
+        ).order_by('is_disqualified', '-score', 'cumtime', 'tiebreaker', '-submission_count', 'pk'),
+    )
+    in_progress_submission_count = sum(row.grading_count for row in participations)
+    pretested_submission_count = sum(row.pretest_count for row in participations)
+    failed_judging_submission_count = sum(row.failure_count for row in participations)
+    results_settled_at_generation = (
+        contest_ended_at_generation and
+        in_progress_submission_count == 0 and
+        pretested_submission_count == 0 and
+        failed_judging_submission_count == 0
+    )
+    if not contest_ended_at_generation:
+        snapshot_state = 'preview'
+    elif results_settled_at_generation:
+        snapshot_state = 'final'
+    else:
+        snapshot_state = 'unsettled'
 
-    final_order = {
-        participation.id: index
-        for index, participation in enumerate(participations)
-    }
-    frozen_order = {
-        participation_id: index
-        for index, participation_id in enumerate(frozen_participation_ids)
-    }
+    final_order = {row.pk: index for index, row in enumerate(participations)}
+    frozen_rows = sorted(participations, key=lambda row: (
+        row.is_disqualified, -row.frozen_score, row.frozen_cumtime, row.frozen_tiebreaker,
+        -row.submission_count, row.pk,
+    ))
+    frozen_order = {row.pk: index for index, row in enumerate(frozen_rows)}
 
-    official_freeze_available = (
+    freeze_configured = (
         format_name in FROZEN_RESOLVER_FORMATS and contest.frozen_last_minutes > 0
     )
+    freeze_reached = freeze_configured and generated_at >= contest.frozen_time
+    official_freeze_available = freeze_reached
     format_config = contest.format.config or {}
     first_solves, total_ac = contest.format.get_first_solves_and_total_ac(
         problems,
@@ -236,7 +242,7 @@ def build_resolver_payload(contest):
     )
 
     return {
-        'schema_version': 1,
+        'schema_version': 3,
         'contest': {
             'id': contest.id,
             'key': contest.key,
@@ -246,6 +252,17 @@ def build_resolver_payload(contest):
             'rank_display_options': contest.rank_display_options,
             'points_precision': contest.points_precision,
             'frozen_last_minutes': contest.frozen_last_minutes,
+            'generated_at': generated_at.isoformat(),
+            'contest_end_time': contest.end_time.isoformat(),
+            'contest_ended_at_generation': contest_ended_at_generation,
+            'snapshot_state': snapshot_state,
+            'in_progress_submission_count': in_progress_submission_count,
+            'pretested_submission_count': pretested_submission_count,
+            'failed_judging_submission_count': failed_judging_submission_count,
+            'results_settled_at_generation': results_settled_at_generation,
+            'freeze_configured': freeze_configured,
+            'freeze_reached': freeze_reached,
+            'official_freeze_baseline_available': official_freeze_available,
             'official_freeze_available': official_freeze_available,
         },
         'problems': [

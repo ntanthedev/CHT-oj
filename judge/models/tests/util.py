@@ -196,7 +196,7 @@ class CreateContest(CreateModel):
         'rate_exclude': (Profile, 'user__username'),
         'private_contestants': (Profile, 'user__username'),
         'organizations': (Organization, 'name'),
-        'tags': (ContestTag, 'name'),
+        'tags': (ContestTag, 'key'),
         'banned_users': (Profile, 'user__username'),
     }
     required_fields = ('key',)
